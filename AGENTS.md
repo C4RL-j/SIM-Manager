@@ -54,7 +54,7 @@ Do not create DITO-specific UI logic.
 
 Current phase:
 
-Foundation reboot, Task 001: minimal Python package and a behavior-preserving D2 SMS/router transport baseline with offline characterization tests. Later tasks remain deferred; follow `plans/active/000-foundation-reboot.md`.
+Foundation reboot: Tasks 001 and 002 are complete and verified. The minimal package and D2 SMS/router transport have offline characterization and reliability coverage. Task 003 has not begun; hardware probing, carrier/account features, SIM/signal detection, and GUI work remain deferred. Follow `plans/active/000-foundation-reboot.md` and wait for an explicitly approved next task.
 
 The application repository is `sim-manager/`. Initialize Git only inside this directory. `../old/D2-desktop/` is read-only reference material, must not be added to the new repository, and must not be changed without explicit authorization.
 

@@ -2,15 +2,17 @@
 
 Date: 2026-10-07
 
-Status: Audit complete; Task 001 complete and verified; Task 002 and later not started
+Status: Audit complete; Tasks 001 and 002 complete and verified; Task 003 and later not started
 
-Scope: Historical repository audit, Task 001 package/transport baseline, and future migration plan
+Scope: Historical audit and Task 001 baseline, Task 002 transport hardening, and future migration plan
 
 ## Decision
 
 Keep the existing Python D2 Telnet/UBus SMS transport as the migration starting point. Copy it into `sim-manager/` with offline characterization tests before changing its behavior. Build small device, carrier, service, storage, and UI boundaries around the code that is actually present. Do not transplant the legacy desktop controller or rewrite the router protocol to establish those boundaries.
 
 `old/` remains read-only reference material. “Remove” below means exclude from the new application, never delete or edit the reference tree. The original audit created this plan only. The approved Task 001 adds a minimal package and offline transport characterization without repairing legacy imports, installing dependencies, contacting hardware, or implementing features.
+
+Task 002 is now authorized for narrow D2 transport hardening only, with offline regression tests. It changes the new copy after characterization while preserving the working UBus wire command. It does not implement SMS normalization, carrier/account features, hardware probing, SIM/network/signal detection, GUI work, or Task 003.
 
 The new application repository is `C:\PROJECTs\SIM-manager_workspace\sim-manager`. Git must be initialized inside `sim-manager/` only, never at the workspace root. `../old/D2-desktop/` must never be added to the new repository. Preserve the legacy tree and verify its file list and SHA-256 hashes before/after extraction.
 
@@ -181,12 +183,12 @@ Create folders/modules only when their task needs them. No separate Quectel driv
 
 Normalized results should carry explicit status, observation time, units where applicable, and source (`device`, `carrier`, or `local_measurement`). Account results also need account/profile binding and freshness; cache origin is a presentation/storage state, not proof of authentication. Unknown/unsupported/failed values must stay distinct from valid zero values. Choose small typed records and only the contracts needed by the first implementation, rather than designing every future feature upfront.
 
-Approved requirements for later tasks, not implemented in Task 001:
+Approved requirements beyond Task 001:
 
 - Shared OTP watcher services consume a carrier-provided matcher/predicate. They must not import DITO OTP logic directly.
 - Carrier detection uses cellular/SIM/operator information, not router branding. A Smart-branded D2 does not establish that the inserted SIM uses Smart.
 - Normalized allowance models support data-only products and non-expiring products; calls/text allowances and expiry must not be mandatory evidence of a valid account result.
-- Future transport hardening supports cooperative cancellation and monotonic deadlines.
+- Task 002 transport hardening implements cooperative cancellation and monotonic deadlines, verified offline. The preceding watcher, carrier-detection, and allowance requirements remain future work.
 
 Diagnostic logs and exception output must mask or omit full phone numbers/MSISDNs, IMSIs, ICCIDs, OTPs, SMS bodies containing sensitive information, authentication cookies, tokens, and passwords. Tests and fixtures use synthetic values. This documentation rule does not authorize wire-protocol changes during the Task 001 extraction.
 
@@ -213,13 +215,34 @@ $env:PYTHONPATH = (Join-Path (Get-Location) 'src')
 python -B -m unittest discover -s tests -v
 ```
 
-Final test results, legacy-copy comparison, hash verification, diff review, and Git status are recorded after verification in section 8. Task 002 has not begun.
+Task 001 test results, legacy-copy comparison, hash verification, diff review, and Git status are recorded in section 8. Its unchanged-copy guarantee applies to that historical baseline; Task 002 intentionally hardens the new copy only.
 
-### Task 002 — narrowly harden transport and normalize messages
+### Task 002 — narrowly harden transport
 
-Fix characterized fragmentation/validation/deadline/buffer issues in the new copy only, with explicit regression tests and documented interface decisions. Keep the working UBus protocol. Add cooperative cancellation and monotonic deadlines when hardening transport. Add validated endpoint configuration and normalize message records/IDs/timestamps without applying DITO rules. Distinguish no messages, malformed payload, unavailable shell, and transport failure. Validate full-inbox ordering/paging before claiming a complete inbox; preserve the three-record OTP read option.
+**Complete and verified offline.** Affected layers: D2 transport, standard-library offline tests, and documentation. Preserve the default endpoint (`192.168.1.1:2323`), default three-record read, exact `build_sms_command` output (including UBus quoting and CRLF), and fixed historical marker `__DITO_HELPER_END_91F7__`. No hardware/network probing is authorized in this task.
 
-Check available authoritative sources for the missing watcher/cache modules before rebuilding their behavior. If recovered, audit them under the same rules; if unavailable, mark them as new implementations. Neither is required to validate the extracted transport.
+Implementation decisions:
+
+- Keep the five existing positional arguments of `fetch_sms_response`; add keyword-only `stop_event` and `max_response_bytes`, defaulting to a 1 MiB raw-wire limit per read phase. The banner, wake-up read, and command response each have their own limit, including Telnet control bytes.
+- Use monotonic deadlines and short receive/send polls: up to 0.5 seconds normally and 0.1 seconds when a stop event is supplied. Preserve the legacy 0.5-second idle wait for banner/wake-up reads within their respective 0.7/0.25-second phase deadlines; short cancellation polls do not end those reads prematurely. Cancellation is cooperative and raises `RouterCancelledError`; check it around I/O and parsing.
+- Run the existing `socket.create_connection` call/arguments in a daemon worker. The caller polls at most every 0.05 seconds to honor its monotonic connection deadline or cancellation. Abandonment closes a socket that arrives later and requires no blocking join. The OS DNS call itself remains uninterruptible; repeated abandoned DNS calls can temporarily accumulate daemon workers. This is an explicit residual resource risk, not a claim that DNS is forcibly cancelled.
+- Keep one stateful Telnet decoder across banner, wake-up, and response reads. Preserve option-refusal behavior while handling fragmented IAC/option sequences, escaped IAC, and subnegotiation through `IAC SE` without leaking control bytes.
+- Accept a completed, terminated, standalone marker line with shell echo enabled or disabled. Marker text inside command echoes or JSON strings must not complete the response. A chunk ending at marker text alone is insufficient evidence of a completed line. Stop response processing at that line; trailing JSON and Telnet bytes in the same receive cannot alter the result or trigger negotiation replies.
+- Bound raw wire accumulation and check deadlines during parsing. Use generic sanitized error messages and suppress raw exception chains. EOF/reset becomes `RouterDisconnectedError`, a subclass of `RouterConnectionError`, rather than a misleading response timeout.
+- Keep the public JSON extraction helper's nested-object behavior. SMS response selection prefers successful outer envelopes and allows transparent-wrapper fallback only when no top-level object has both `code` and `msg`. Wrapper traversal stops at any envelope with both fields, including an error or incomplete envelope; nested SMS content cannot override it. Skip malformed balanced outer objects whole and stop at unclosed outer objects, preventing nested success promotion in both cases.
+
+Intentionally preserved quirks:
+
+- `data` remains unnormalized and loosely validated; stringified data remains a string. This task does not introduce SMS records, timestamps, inbox ordering/paging, or a new payload schema.
+- The last successful eligible envelope can still be selected ahead of a later error envelope.
+- The exact historical command, static marker, default endpoint/count, and direct-shell requirement remain. This task does not implement Telnet authentication or confirm the device model/firmware.
+- Telnet option-refusal writes remain best effort; their socket errors are swallowed as in the baseline. Cancellation and deadline checks around each reply still bound processing.
+
+Offline regressions must cover fragmented negotiation/subnegotiation, completion with echo on/off, false or fragmented markers, raw-wire caps, monotonic deadlines, cancellation including pending connection setup and cleanup, disconnect classification, response selection, and diagnostic privacy. Preserve successful legacy command/pacing/JSON coverage while updating tests whose former defect is intentionally fixed. Final counts and verification evidence belong in section 8.
+
+The direct shell, `cped` SMS command, line termination, fixed marker, and supported payload variants are still unverified hardware assumptions. Balanced shell noise can be skipped, but an unclosed leading brace prevents safe resynchronization and causes response rejection instead of nested success promotion. Compatibility with such router output is an explicit remaining assumption. Offline tests provide synthetic evidence only. The daemon worker cannot interrupt the underlying resolver; callers must not create unbounded retries around abandoned hostname lookups.
+
+Deferred beyond Task 002: validated endpoint settings/configuration, message normalization/IDs/timestamps, stronger payload-schema validation, full-inbox ordering/paging, and watcher/cache recovery or implementation. Check authoritative sources for the missing watcher/cache modules before rebuilding their behavior in a later task. Task 003 and all carrier/UI work remain unstarted.
 
 ### Task 003 — establish device capabilities with evidence
 
@@ -272,7 +295,7 @@ Verified on Python 3.13.15:
 - `python -S -B -m unittest discover -s tests -v`: **30 tests passed**, with site packages disabled. Both runs use `PYTHONPATH=src` from the new repository root; they neither import nor execute legacy files.
 - Package imports also succeed with site packages disabled. Project metadata declares zero runtime dependencies; building a distribution uses the declared setuptools backend, which was not installed or exercised in this task.
 - Tests block real socket construction and require fake connections. Synthetic transcripts cover default/custom connection arguments, the 0.7/0.25-second read windows and 0.5-second socket timeout, Telnet refusals/escaped IAC, exact UBus quoting/CRLF, command echo and second-marker completion, fragmented payload/markers, JSON amid shell noise, nested/stringified JSON, retries/timeouts, login prompts, disconnects, malformed/error envelopes, and socket cleanup.
-- The port and legacy `router.py` have identical SHA-256 hashes (`4050F88425B155E25C8D233CF3C1AD5A019A06F4BC0EF6DF1CCDCDB16BA1A56E`); no protocol, public interface, or exception changes were introduced.
+- At Task 001 completion, the port and legacy `router.py` had identical SHA-256 hashes (`4050F88425B155E25C8D233CF3C1AD5A019A06F4BC0EF6DF1CCDCDB16BA1A56E`); no protocol, public interface, or exception changes were introduced during that extraction. Task 002 intentionally changes the new copy after this baseline.
 - All 40 legacy files retain their original paths and SHA-256 hashes. Git is initialized only inside `sim-manager/`; no Git directory was created at the workspace root and the legacy tree is outside the repository.
 - Git diff review includes new files through a temporary index; the normal index remains unstaged. No commits were created. The initial repository status lists the project files as untracked.
 
@@ -284,7 +307,22 @@ Observed legacy behavior differs from likely future expectations in the followin
 - Success envelopes validate only code/message/data presence. `data` need not be a valid SMS payload, and extraction enumerates nested objects; a nested success envelope can override its outer response. The last successful candidate can also be selected ahead of a later error envelope.
 - Raw `OSError` text and exception chaining are unchanged. Future diagnostic callers must mask or omit sensitive content rather than blindly print exceptions or their causes.
 
-These are characterization observations, not fixes or approved permanent contracts. No live-router, hardware, modem, browser, or account verification was performed. The four future requirements above remain documentation only; Task 002 and later have not begun. This foundation plan remains active for its outstanding tasks.
+These are historical Task 001 characterization observations, not approved permanent contracts. No live-router, hardware, modem, browser, or account verification was performed. At Task 001 completion, the four requirements above were documentation only and Task 002 had not begun. The following section records the later authorized hardening. This foundation plan remains active for its outstanding tasks.
+
+### Task 002 verification
+
+Verified on Python 3.13.15 from `sim-manager/` with `PYTHONPATH=src`:
+
+- `python -S -B -m unittest discover -s tests -v`: **78 tests passed** (30 retained/updated characterization tests and 48 reliability tests). Site packages were disabled. The final run took 0.411 seconds.
+- Synthetic sockets, clocks, events, and controlled connection workers cover unchanged command/default behavior, echo on/off, line/UTF-8 fragmentation, Telnet state/subnegotiation, raw-wire caps, monotonic deadlines, cancellation/late-socket cleanup, disconnects, safe envelope/wrapper selection, and sanitized exception output. No live connections occurred.
+- Final idle-pacing regressions cover delayed login text after short cancellation polls, cancellation across repeated polls, delayed-login rejection through the fetch path, and a successful cancellable fetch with phase-aware fake timing. Banner/wake-up reads preserve the 0.5-second idle wait within their 0.7/0.25-second phase caps.
+- All six Python files parse successfully. Package imports remain inert with real socket construction and connection calls blocked.
+- All 40 legacy file paths and SHA-256 hashes match the baseline; no legacy files were added, removed, or changed.
+- `git diff --check` passes, including untracked files reviewed through a temporary index. The normal index remains unstaged. On branch `main`, Task 002 changes consist of seven modified files and one untracked reliability test file. No commits were created during Task 002.
+
+Intentional updates to Task 001 expectations: fragmented negotiation retains state; completion accepts one terminated standalone marker with echo on or off; EOF/reset is classified as a disconnect; raw I/O details and exception chains are suppressed; nested response payloads cannot override valid or malformed outer envelopes. Bytes after the completion line are excluded from response processing, including trailing JSON and Telnet negotiations. The exact UBus command, default endpoint/read count, data-shape/stringified-data lenience, last-success selection, public helper nested enumeration, and best-effort Telnet refusal errors remain covered compatibility behavior.
+
+Remaining limits are documented in section 7: uninterruptible OS DNS work can leave abandoned daemon workers temporarily alive, unclosed leading-brace shell noise prevents safe response resynchronization, and router firmware/line/payload assumptions remain unverified. No live-router, hardware, modem, browser, or account verification was performed. Task 003 and later remain unstarted; this foundation plan stays active.
 
 ## 9. Requested outcome summary
 
@@ -292,4 +330,4 @@ These are characterization observations, not fixes or approved permanent contrac
 - **Refactor:** device SMS normalization, DITO OTP/content rules, MyDITO browser/account code, saved-account schema and cache identity, time/unit handling, controller orchestration, and carrier-specific UI coupling.
 - **Remove from the new runtime:** duplicate helper/Tkinter application flows, raw sensitive debugging, remote-page application overlay/mailboxes, hardcoded router availability, global unbound account cache assumptions, and old branding/launch/build entry points. Preserve `old/` intact.
 - **Build new:** minimal package/test/dependency setup, verified SIM/network/signal/device-capability queries, carrier/service contracts, missing polling/cache implementations if unrecoverable, neutral local UI, account-bound session/cache lifecycle, and later Smart support/outbound SMS.
-- **Completed first step:** Task 001, minimal package scaffold plus a behavior-preserving D2 SMS transport extraction with offline characterization tests. Task 002 requires a separate implementation request.
+- **Completed foundation steps:** Task 001 established the package and characterized the preserved D2 SMS transport; Task 002 completed scoped transport hardening with 78 passing offline tests. Task 003 and later remain deferred.

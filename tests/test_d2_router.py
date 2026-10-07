@@ -1,8 +1,9 @@
-"""Offline characterization of the unchanged D2 Telnet/UBus transport.
+"""Offline characterization and scoped reliability tests for D2 transport.
 
 Every fixture is synthetic. Real socket creation is blocked, and all deadlines
-use a deterministic fake clock. Tests named ``legacy_quirk`` record limitations
-of the copied baseline, not the intended contract after future hardening.
+use a deterministic monotonic clock. Unchanged wire behavior stays covered;
+Task 002 intentionally updates completion, disconnect and parser expectations.
+Tests named ``legacy_quirk`` identify compatibility behavior still retained.
 """
 
 from collections import deque
@@ -10,7 +11,7 @@ from contextlib import ExitStack
 import json
 import socket
 import unittest
-from unittest.mock import call, patch
+from unittest.mock import patch
 
 
 # Importing the package must also be inert, with no device/browser startup.
@@ -46,6 +47,18 @@ class FakeClock:
         self.now += seconds
 
 
+class ImmediateThread:
+    """Run the connect worker inline; no background thread or wall-clock wait."""
+
+    def __init__(self, target, args=(), kwargs=None, **options):
+        self.target = target
+        self.args = args
+        self.kwargs = kwargs or {}
+
+    def start(self):
+        self.target(*self.args, **self.kwargs)
+
+
 class FakeSocket:
     """Script receives as bytes or exceptions and record all socket activity."""
 
@@ -54,6 +67,7 @@ class FakeSocket:
         self.receives = deque(receives)
         self.send_error = send_error
         self.events = []
+        self.io_timeouts = []
         self.sent = []
         self.timeout = 0.5
         self.closed = False
@@ -75,13 +89,17 @@ class FakeSocket:
         self.events.append(("settimeout", timeout))
 
     def sendall(self, data):
+        self.io_timeouts.append(("send", self.timeout))
         self.events.append(("send", data))
         self.sent.append(data)
         if self.send_error is not None:
             raise self.send_error
 
     def recv(self, size):
+        self.io_timeouts.append(("recv", self.timeout))
         event = self.receives.popleft() if self.receives else socket.timeout()
+        if callable(event):
+            event = event(self)
         self.events.append(("recv", size, event))
         self.clock.advance(self.timeout if isinstance(event, socket.timeout) else 0.01)
         if isinstance(event, BaseException):
@@ -93,7 +111,11 @@ class OfflineCase(unittest.TestCase):
     def setUp(self):
         self.stack = self.enterContext(ExitStack())
         self.clock = FakeClock()
-        self.stack.enter_context(patch.object(router.time, "time", self.clock.time))
+        self.stack.enter_context(patch.object(router.time, "monotonic", self.clock.time))
+        self.stack.enter_context(
+            patch.object(router.time, "time", side_effect=AssertionError("Wall clock forbidden"))
+        )
+        self.stack.enter_context(patch.object(router.threading, "Thread", ImmediateThread))
         self.stack.enter_context(
             patch("socket.socket", side_effect=AssertionError("Real sockets forbidden"))
         )
@@ -133,13 +155,17 @@ class FetchCharacterizationTests(OfflineCase):
 
         self.assertEqual(result, PAYLOAD)
         self.connection.assert_called_once_with(("192.168.1.1", 2323), timeout=3.0)
-        self.assertEqual(reads.call_args_list, [call(sock, 0.7), call(sock, 0.25)])
+        self.assertEqual([item.args for item in reads.call_args_list], [(sock, 0.7), (sock, 0.25)])
+        self.assertIs(
+            reads.call_args_list[0].kwargs["decoder"], reads.call_args_list[1].kwargs["decoder"]
+        )
         self.assertEqual(sock.sent, [b"\r\n", COMMAND.encode()])
-        self.assertEqual(sock.events[0:2], [("enter",), ("settimeout", 0.5)])
+        self.assertEqual(sock.events[0], ("enter",))
+        self.assertTrue(all(0 < event[1] <= 0.5 for event in sock.events if event[0] == "settimeout"))
         self.assertEqual(
-            [event[0] for event in sock.events],
+            [event[0] for event in sock.events if event[0] != "settimeout"],
             [
-                "enter", "settimeout", "recv", "recv", "send", "recv", "recv",
+                "enter", "recv", "recv", "send", "recv", "recv",
                 "send", "recv", "recv", "recv", "close",
             ],
         )
@@ -148,7 +174,9 @@ class FetchCharacterizationTests(OfflineCase):
     def test_configured_endpoint_read_count_and_timeout_are_forwarded(self):
         command = COMMAND.replace('ReadNum\\":3', 'ReadNum\\":7')
         sock = self.fake_connection(
-            self.transcript([command.encode(), json.dumps(PAYLOAD).encode(), MARKER.encode()])
+            self.transcript(
+                [command.encode(), json.dumps(PAYLOAD).encode() + b"\r\n", MARKER.encode() + b"\r\n"]
+            )
         )
         with patch.object(
             router, "receive_until_marker_printed", wraps=router.receive_until_marker_printed
@@ -157,7 +185,9 @@ class FetchCharacterizationTests(OfflineCase):
                 router.fetch_sms_response("router.invalid", 1234, 7, 1.25, 4.0), PAYLOAD
             )
         self.connection.assert_called_once_with(("router.invalid", 1234), timeout=1.25)
-        reads.assert_called_once_with(sock, MARKER, timeout=4.0)
+        self.assertEqual(reads.call_count, 1)
+        self.assertEqual(reads.call_args.args, (sock, MARKER))
+        self.assertEqual(reads.call_args.kwargs["timeout"], 4.0)
         self.assertEqual(sock.sent, [b"\r\n", command.encode()])
 
     def test_negotiation_in_banner_and_response_is_refused_without_payload_loss(self):
@@ -174,12 +204,12 @@ class FetchCharacterizationTests(OfflineCase):
         self.assertTrue(sock.closed)
 
     def test_echo_does_not_complete_read_before_fragmented_final_marker(self):
-        payload = json.dumps(PAYLOAD).encode()
+        payload = json.dumps(PAYLOAD).encode() + b"\r\n"
         sock = self.fake_connection(
             self.transcript(
                 [
                     COMMAND.encode(), payload[:12], payload[12:],
-                    MARKER[:9].encode(), MARKER[9:].encode(), b"unread trailing prompt",
+                    MARKER[:9].encode(), MARKER[9:].encode() + b"\r\n", b"unread trailing prompt",
                 ]
             )
         )
@@ -194,12 +224,13 @@ class FetchCharacterizationTests(OfflineCase):
         self.assertEqual(router.fetch_sms_response(response_timeout=3.0), PAYLOAD)
         self.assertTrue(sock.closed)
 
-    def test_legacy_quirk_echo_disabled_shell_times_out_after_valid_response(self):
+    def test_echo_disabled_shell_succeeds_with_standalone_completion_marker(self):
         sock = self.fake_connection(
-            self.transcript([json.dumps(PAYLOAD).encode(), MARKER.encode()])
+            self.transcript(
+                [json.dumps(PAYLOAD).encode() + b"\r\n", MARKER.encode() + b"\r\n"]
+            )
         )
-        with self.assertRaisesRegex(router.RouterTimeoutError, "SMS command to finish"):
-            router.fetch_sms_response(response_timeout=1.0)
+        self.assertEqual(router.fetch_sms_response(response_timeout=1.0), PAYLOAD)
         self.assertTrue(sock.closed)
 
     def test_missing_final_marker_times_out_even_with_echo_and_valid_json(self):
@@ -217,26 +248,29 @@ class FetchCharacterizationTests(OfflineCase):
         self.assertLess(self.clock.now - started, 3.0)
         self.assertTrue(sock.closed)
 
-    def test_connect_timeout_maps_to_router_timeout_with_original_cause(self):
+    def test_connect_timeout_maps_to_router_timeout_without_raw_cause(self):
         error = socket.timeout("synthetic timeout")
         self.connection.side_effect = error
         with self.assertRaisesRegex(router.RouterTimeoutError, "connecting to the router") as raised:
             router.fetch_sms_response()
-        self.assertIs(raised.exception.__cause__, error)
+        self.assertIsNone(raised.exception.__cause__)
+        self.assertTrue(raised.exception.__suppress_context__)
 
     def test_connection_refusal_maps_to_connection_error(self):
         error = ConnectionRefusedError("synthetic refusal")
         self.connection.side_effect = error
         with self.assertRaisesRegex(router.RouterConnectionError, "Connection refused") as raised:
             router.fetch_sms_response()
-        self.assertIs(raised.exception.__cause__, error)
+        self.assertIsNone(raised.exception.__cause__)
+        self.assertTrue(raised.exception.__suppress_context__)
 
     def test_connect_oserror_maps_to_connection_error(self):
         error = OSError("synthetic unavailable endpoint")
         self.connection.side_effect = error
         with self.assertRaisesRegex(router.RouterConnectionError, "Could not connect") as raised:
             router.fetch_sms_response()
-        self.assertIs(raised.exception.__cause__, error)
+        self.assertIsNone(raised.exception.__cause__)
+        self.assertTrue(raised.exception.__suppress_context__)
 
     def test_login_or_password_banner_is_rejected_before_sending(self):
         for banner in [b"LOGIN: ", b"PassWord: "]:
@@ -249,7 +283,7 @@ class FetchCharacterizationTests(OfflineCase):
 
     def test_completed_markers_without_json_raise_response_error(self):
         sock = self.fake_connection(
-            self.transcript([COMMAND.encode(), MARKER.encode()])
+            self.transcript([COMMAND.encode(), MARKER.encode() + b"\r\n"])
         )
         with self.assertRaisesRegex(router.RouterResponseError, "complete router SMS response"):
             router.fetch_sms_response()
@@ -258,7 +292,7 @@ class FetchCharacterizationTests(OfflineCase):
     def test_completed_markers_with_malformed_json_raise_response_error(self):
         sock = self.fake_connection(
             self.transcript(
-                [COMMAND.encode(), b'{"code":200,"msg":"ok","data":', MARKER.encode()]
+                [COMMAND.encode(), b'{"code":200,"msg":"ok","data":\r\n', MARKER.encode() + b"\r\n"]
             )
         )
         with self.assertRaises(router.RouterResponseError):
@@ -278,26 +312,27 @@ class FetchCharacterizationTests(OfflineCase):
                     router.fetch_sms_response()
                 self.assertTrue(sock.closed)
 
-    def test_legacy_quirk_eof_before_command_output_is_reported_as_timeout(self):
+    def test_eof_before_command_output_is_reported_as_disconnect(self):
         sock = self.fake_connection(self.transcript([b""]))
-        with self.assertRaisesRegex(router.RouterTimeoutError, "SMS command to finish"):
+        with self.assertRaises(router.RouterDisconnectedError):
             router.fetch_sms_response()
         self.assertTrue(sock.closed)
 
-    def test_legacy_quirk_disconnect_mid_response_is_reported_as_timeout(self):
+    def test_disconnect_mid_response_is_reported_as_disconnect(self):
         sock = self.fake_connection(
             self.transcript([COMMAND.encode(), b'{"code":200,', b""])
         )
-        with self.assertRaises(router.RouterTimeoutError):
+        with self.assertRaises(router.RouterDisconnectedError):
             router.fetch_sms_response()
         self.assertTrue(sock.closed)
 
-    def test_legacy_quirk_receive_oserror_is_labeled_connection_error(self):
+    def test_receive_reset_is_reported_as_disconnect_without_raw_cause(self):
         error = ConnectionResetError("synthetic reset")
         sock = self.fake_connection(self.transcript([error]))
-        with self.assertRaisesRegex(router.RouterConnectionError, "Could not connect") as raised:
+        with self.assertRaises(router.RouterDisconnectedError) as raised:
             router.fetch_sms_response()
-        self.assertIs(raised.exception.__cause__, error)
+        self.assertIsNone(raised.exception.__cause__)
+        self.assertTrue(raised.exception.__suppress_context__)
         self.assertTrue(sock.closed)
 
 
@@ -330,18 +365,15 @@ class TelnetCharacterizationTests(OfflineCase):
         )
         self.assertEqual(sock.sent, [bytes([255, 254, 1])])
 
-    def test_legacy_quirk_fragmented_negotiation_loses_state_and_leaks_option(self):
-        # Preserve the observed defect for Task 001; a future parser fix changes this test.
-        for fragments, expected in [
-            ([b"\xff", b"\xfb\x01shell"], b"\xfb\x01shell"),
-            ([b"\xff\xfb", b"\x01shell"], b"\x01shell"),
+    def test_fragmented_negotiation_preserves_state_without_leaking_option(self):
+        for fragments in [
+            [b"\xff", b"\xfb\x01shell"],
+            [b"\xff\xfb", b"\x01shell"],
         ]:
             with self.subTest(fragments=fragments):
                 sock = FakeSocket(self.clock, [*fragments, socket.timeout()])
-                self.assertEqual(
-                    router.receive_some(sock), expected.decode("utf-8", errors="replace")
-                )
-                self.assertEqual(sock.sent, [])
+                self.assertEqual(router.receive_some(sock), "shell")
+                self.assertEqual(sock.sent, [b"\xff\xfe\x01"])
 
     def test_banner_decode_replaces_invalid_utf8_instead_of_failing(self):
         sock = FakeSocket(self.clock, [b"shell\xfe\r\n", socket.timeout()])
@@ -380,10 +412,10 @@ class CommandAndJsonCharacterizationTests(OfflineCase):
         output = "\r\n".join(json.dumps(item) for item in [first, last, error])
         self.assertEqual(router.get_sms_response(output), last)
 
-    def test_legacy_quirk_nested_success_envelope_can_override_outer_envelope(self):
+    def test_nested_success_envelope_cannot_override_outer_envelope(self):
         inner = {"code": 200, "msg": "ok", "data": []}
         outer = {"code": 200, "msg": "ok", "data": {"nested": inner}}
-        self.assertEqual(router.get_sms_response(json.dumps(outer)), inner)
+        self.assertEqual(router.get_sms_response(json.dumps(outer)), outer)
 
     def test_legacy_quirk_success_envelope_does_not_validate_data_shape(self):
         for data in [None, False, 17, {}, "synthetic unvalidated data"]:
