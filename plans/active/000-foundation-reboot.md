@@ -2,9 +2,11 @@
 
 Date: 2026-10-07
 
-Status: Audit complete; Tasks 001 and 002 complete and verified; Task 003 and later not started
+Updated: 2026-10-08 (Asia/Irkutsk)
 
-Scope: Historical audit and Task 001 baseline, Task 002 transport hardening, and future migration plan
+Status: Audit complete; Tasks 001–004 complete within their approved scopes; Task 005 and later not started
+
+Scope: Historical audit and transport foundation, read-only D2 hardware/telemetry discovery, and future migration plan
 
 ## Decision
 
@@ -12,7 +14,11 @@ Keep the existing Python D2 Telnet/UBus SMS transport as the migration starting 
 
 `old/` remains read-only reference material. “Remove” below means exclude from the new application, never delete or edit the reference tree. The original audit created this plan only. The approved Task 001 adds a minimal package and offline transport characterization without repairing legacy imports, installing dependencies, contacting hardware, or implementing features.
 
-Task 002 is now authorized for narrow D2 transport hardening only, with offline regression tests. It changes the new copy after characterization while preserving the working UBus wire command. It does not implement SMS normalization, carrier/account features, hardware probing, SIM/network/signal detection, GUI work, or Task 003.
+Task 002 completed narrow D2 transport hardening with offline regression tests. It changed the new copy after characterization while preserving the working UBus wire command. It did not implement SMS normalization, carrier/account features, hardware probing, SIM/network/signal detection, GUI work, or Task 003.
+
+Task 003 completed observational D2 hardware discovery with a manually invoked development probe and a capability report. Read-only safety was established before each fixed query was executed. Production detection/normalization, carrier/account integration, and GUI work remain unstarted. Never alter router configuration or guess AT/vendor commands.
+
+Task 004 completed discovery of read-only cellular telemetry used by the firmware/admin UI. Source inspection established seven GETs; the user returned a sanitized authenticated report from the legitimate Brave session. Raw labels and field types are verified within the report's privacy limits; units, broader state meanings, carrier identity, and modem firmware revision remain unverified. No production/carrier logic or Task 005 work is authorized.
 
 The new application repository is `C:\PROJECTs\SIM-manager_workspace\sim-manager`. Git must be initialized inside `sim-manager/` only, never at the workspace root. `../old/D2-desktop/` must never be added to the new repository. Preserve the legacy tree and verify its file list and SHA-256 hashes before/after extraction.
 
@@ -240,19 +246,59 @@ Intentionally preserved quirks:
 
 Offline regressions must cover fragmented negotiation/subnegotiation, completion with echo on/off, false or fragmented markers, raw-wire caps, monotonic deadlines, cancellation including pending connection setup and cleanup, disconnect classification, response selection, and diagnostic privacy. Preserve successful legacy command/pacing/JSON coverage while updating tests whose former defect is intentionally fixed. Final counts and verification evidence belong in section 8.
 
-The direct shell, `cped` SMS command, line termination, fixed marker, and supported payload variants are still unverified hardware assumptions. Balanced shell noise can be skipped, but an unclosed leading brace prevents safe resynchronization and causes response rejection instead of nested success promotion. Compatibility with such router output is an explicit remaining assumption. Offline tests provide synthetic evidence only. The daemon worker cannot interrupt the underlying resolver; callers must not create unbounded retries around abandoned hostname lookups.
+At Task 002 completion, the direct shell, `cped` SMS command, line termination, fixed marker, and supported payload variants remained unverified hardware assumptions. Task 003 later confirmed the default direct shell and standalone-line framing for discovery queries, but did not read SMS or verify the historical SMS marker/payload forms. Balanced shell noise can be skipped, but an unclosed leading brace prevents safe resynchronization and causes response rejection instead of nested success promotion. Compatibility with such router output remains an assumption. The daemon worker cannot interrupt the underlying resolver; callers must not create unbounded retries around abandoned hostname lookups.
 
-Deferred beyond Task 002: validated endpoint settings/configuration, message normalization/IDs/timestamps, stronger payload-schema validation, full-inbox ordering/paging, and watcher/cache recovery or implementation. Check authoritative sources for the missing watcher/cache modules before rebuilding their behavior in a later task. Task 003 and all carrier/UI work remain unstarted.
+Deferred beyond Task 002: validated endpoint settings/configuration, message normalization/IDs/timestamps, stronger payload-schema validation, full-inbox ordering/paging, and watcher/cache recovery or implementation. Check authoritative sources for the missing watcher/cache modules before rebuilding their behavior in a later task. These production changes and all carrier/UI work remain unstarted.
 
 ### Task 003 — establish device capabilities with evidence
 
-Use targeted read-only inspection on a supported D2 setup to identify model/firmware/modem, SIM state, network registration/operator/RAT, and signal commands available through the router. Record documented/observed behavior in sanitized fixtures and device docs. Never guess Quectel AT commands or hidden endpoints from the modem name. Implement each verified read behind the device contract; unsupported capabilities fail gracefully. Keep router reachability, SIM readiness, and network registration distinct. Carrier detection must use cellular/SIM/operator information rather than router branding.
+**Complete within the approved discovery scope.** Targeted read-only inspection investigated available SIM/network/radio/WAN/modem sources without requiring every field to exist or implementing the final device/carrier system. Production package code and its original tests were unchanged in Task 003. The separately approved Task 004 is scoped below.
 
-### Task 004 — DITO core services
+`tools/d2_discovery.py` is a manual development-only probe. It reuses the existing private transport helpers without adding a production arbitrary-command API. Fixed reviewed commands, an 8-second query deadline, 256 KiB per-read-phase raw-wire limits, literal-IP hosts, and Ctrl+C cooperative cancellation bound its scope. Normal console output allows only reviewed metadata and omits unknown/sensitive values. Optional raw responses require `--capture-raw` and stay under the ignored `artifacts/d2-private/` directory; that flag has not been used.
+
+All 18 fixed query types were manually executed; the complete E01–E18 ledger, exact commands, read-only basis, exit status, masked response shapes, and field inventory are in [D2-HARDWARE-CAPABILITIES.md](../../docs/devices/D2-HARDWARE-CAPABILITIES.md). Results:
+
+- **VERIFIED:** default direct shell, UBus help/object/schema metadata, `DISTRIB_ID=OpenWrt`, and USB `1-2` descriptors `2c7c:6004`, manufacturer `Quectel`, model `EG060V-EAAA`.
+- **VERIFIED:** host IPv4/IPv6 addresses, one default route per family bound to that USB module's network interface, and three IPv4 resolver entries. Addresses/gateways and unknown interface names are masked or omitted. These observations establish kernel configuration, not registration, cellular address assignment, PDP family, DNS provenance, or Internet health.
+- **NOT FOUND:** a verified safe cellular getter in the inspected UBus schema, selected web source files, and static getter/name searches. Method names and field references alone never establish read-only vendor semantics or absent hardware capabilities.
+- **VERIFIED text only:** static references to operator/MNC/RSSI/EARFCN/APN/IP fields prove neither runtime values nor a safe getter. Their implications are too weak for an INFERRED runtime-field rating and must not become production behavior.
+- **UNTESTED:** SIM present/ready/PIN and identities, operator/PLMN/MCC-MNC/registration/roaming/RAT, band/EARFCN/cell/PCI/signal metrics, active APN/PDP/connection health, cellular IP assignment, modem firmware revision, and hardware-reported router model/exact firmware. The filtered APN configuration read exited 2; failed access does not establish APN absence.
+
+The default shell and terminated-line framing worked without production transport changes. An initial sandbox connection failure was followed by successful authorized network access. No cellular vendor getter, SMS query/read/send/delete, AT command, configuration write, restart, reconnect, reboot, or router installation occurred. No raw-capture flag was used. No actual cellular identifier was observed, so DITO cannot yet be distinguished reliably from Smart; router branding/module identity/MAC/SSID are not substitutes.
+
+Preserved limits and future validation: the binding query assumes a single default route per family, as observed; multiple defaults can yield inconclusive false flags. Static-source scans are bounded and privacy-filtered, not an exhaustive firmware audit. Additional firmware-evidenced getters, units/status semantics, SIM states, firmware variants, cellular assignment, and SMS-specific marker/payload behavior still require separately authorized validation. The probe's private-helper reuse is development-only; no arbitrary production shell API or neutral production models were added.
+
+Future work must retain VERIFIED / INFERRED / NOT FOUND / UNTESTED classifications and distinguish values from units/status interpretation. Keep router reachability, SIM readiness, and registration separate. Carrier interpretation belongs outside `devices/d2/` and must use cellular/SIM/operator evidence. No configuration change or guessed AT/vendor query is authorized by this plan update.
+
+### Task 004 — verify firmware/admin-UI cellular telemetry
+
+**Complete within approved discovery scope; limitations retained.** Identify and verify read-only telemetry interfaces used by the D2's own firmware/admin UI. Investigate SIM presence/ready/PIN/ICCID/IMSI/MSISDN, operator/PLMN/MCC-MNC/registration/roaming/RAT, band/EARFCN/cell/PCI/signal metrics, active APN/PDP/IP-family/cellular state, and modem firmware revision where exposed. Do not require every field to exist or implement production detection.
+
+Inspect available firmware/web assets for actual XHR/fetch/RPC/CGI/UBus requests and response fields first. Then observe or invoke only requests evidenced as read operations, preferably those generated by status pages. Use an existing legitimate router session where practical; never store/log passwords, cookies, or tokens. Do not interact with controls or operations that change configuration, connections, services, SMS, SIM state, APN, RAT/network mode, or band locks. No guessed AT/UBus/CGI/RPC method or unknown-side-effect modem command is permitted.
+
+For each candidate record its source/page/path, exact method/request, read-only basis, authentication requirements, masked response shape, observed fields, state-change observation, and VERIFIED / INFERRED / NOT FOUND / UNTESTED classification. If safety is unverified, do not execute it; record that limit explicitly. Units/status interpretation require evidence independently of field existence. Neutral PLMN/operator values must not be mapped to a carrier in this task.
+
+Extend `tools/d2_discovery.py` only with explicitly allowlisted evidenced getters. Keep normal output masked/omitted, raw capture opt-in and gitignored, deadlines/output bounded, cancellation cooperative, and production startup inert. Add sanitized observed-shape fixtures and offline coverage for missing/null/unexpected types, partial/malformed responses, observed firmware differences, and sensitive-value redaction. No test may depend on hardware.
+
+The capability report contains a separate Task 004 cellular telemetry section with source ledger T4-S01–S05 and authenticated ledger T4-A01–A07. The active `/opt/web` Vue source establishes seven exact GET requests and view bindings. Two initially unauthenticated telemetry requests returned HTTP 401; the other five were not separately tested without the session. The firmware's `localStorage.Authorization`/Authorization-header/`withCredentials` mechanism is source-verified and was reused privately inside the tab. All seven authenticated requests returned HTTP 200/body code 200/object data.
+
+Observed Internet fields include `Status="Connected"`, `Band="1/28"`, `RSRP="-91"`, `RSRQ="-9"`, and `SINR="22"`. Nested WAN `ConnectionStatus` includes `ConnectMode="LTE"`, `ConnectStatus="Connected"`, `USIMStatus="Ready"`, `RSRP0="-91"`, `RSRP1="-96"`, and `RSSI="-82"`; the separate WAN `ConnectMethod="GSM"` label is not interpreted as a 2G fallback. SIM information reports `SIMCardState="READY"` and `PINCheckEnabled="OFF"`. ICCID/IMSI/MSISDN and other identifier/address field presence/types are verified with values masked; operator/model/version text, PCI, and PIN-retry string values are omitted. The sanitized fixture records 49 typed fields across seven successful responses.
+
+Masking also replaces empty strings, so identifier/address validity, non-empty state, and correspondence to the inserted SIM are unknown. Raw ready labels do not independently verify a present boolean or absent/locked states. Connected is not verified EPS registration or Internet health. Band `1/28` is not interpreted as carrier aggregation. Signal units/scale/antenna meanings and status-code interpretations remain unverified. No operator-name/PLMN/MCC-MNC value was exported or mapped to a carrier. APN/PDP/registration/roaming/EARFCN were not found in this reviewed sanitized output; omitted raw fields may exist. Modem firmware revision is not established by router/software-version keys. `wirelessinfo` exported no allowlisted fields, which does not prove empty raw data or an unsupported capability. Other firmware/SIM states remain unexercised.
+
+Task 004 also intentionally tightens the development-summary privacy boundary. Earlier component-word matching could print arbitrary quoted values that happened to resemble an allowed dotted name. Those summaries/status-name searches now report only the exact reviewed operation `sms.get.inboxdata`; a strict source helper supplies reviewed endpoint/property metadata without literal values. Two earlier development-summary expectations were updated and a privacy regression added. Production transport and all 78 original transport tests are unchanged.
+
+The browser probe performs only the seven allowlisted same-origin GETs in the existing legitimate signed-in tab. It keeps authorization inside that origin, requests no browser-storage/configuration writes, rejects redirects, uses a 20-second total deadline and 256 KiB response limits, and supports explicit cancellation. Brave had no accessible connector or exposed remote-debugging port/pipe, so the user manually executed the probe and supplied only its sanitized report. `state_changes_requested=false` records GET-only requested operations; firmware-internal counter/log side effects were not audited. No raw capture or credential export occurred. Task 005 has not begun.
+
+### Deferred DITO core services — future scope only
+
+The following earlier proposal is not the approved Task 004. It remains unassigned future work and is not authorized by telemetry discovery.
 
 Add DITO recognition from verified device evidence and a carrier adapter with explicit unknown/unsupported states. Move the existing DITO OTP rule into that adapter over normalized messages. Shared OTP watcher services must accept a carrier-provided matcher/predicate rather than importing DITO OTP logic directly. Recover or implement the missing polling service with injected clock/fetcher, baseline/new-message handling, freshness, bounded retry, cancellation, and SIM-change reset. Port reviewed OTP/watcher tests and add missing ordering/malformed/time-zone cases. No MyDITO automation or Smart account features are needed for Phase 1.
 
 ### Task 005 — local storage and minimal neutral UI
+
+**Future proposal; not started or authorized by Task 004.**
 
 Reuse atomic settings persistence with a single canonical saved-account schema and `%LOCALAPPDATA%/SIM Manager` paths. Preserve old app-data files; any future import must be explicit, validate input, resolve deletion/selection semantics, and never carry over authentication material or an unbound global account cache. Keep detected SIM identity separate from user-entered account numbers.
 
@@ -322,7 +368,32 @@ Verified on Python 3.13.15 from `sim-manager/` with `PYTHONPATH=src`:
 
 Intentional updates to Task 001 expectations: fragmented negotiation retains state; completion accepts one terminated standalone marker with echo on or off; EOF/reset is classified as a disconnect; raw I/O details and exception chains are suppressed; nested response payloads cannot override valid or malformed outer envelopes. Bytes after the completion line are excluded from response processing, including trailing JSON and Telnet negotiations. The exact UBus command, default endpoint/read count, data-shape/stringified-data lenience, last-success selection, public helper nested enumeration, and best-effort Telnet refusal errors remain covered compatibility behavior.
 
-Remaining limits are documented in section 7: uninterruptible OS DNS work can leave abandoned daemon workers temporarily alive, unclosed leading-brace shell noise prevents safe response resynchronization, and router firmware/line/payload assumptions remain unverified. No live-router, hardware, modem, browser, or account verification was performed. Task 003 and later remain unstarted; this foundation plan stays active.
+Remaining Task 002 limits were documented in section 7: uninterruptible OS DNS work can leave abandoned daemon workers temporarily alive, unclosed leading-brace shell noise prevents safe response resynchronization, and router firmware/line/payload assumptions remained unverified. No live-router, hardware, modem, browser, or account verification was performed during Task 002. Task 003 began later with the read-only evidence below; this foundation plan stays active.
+
+### Task 003 verification
+
+Verified on Python 3.13.15 from `sim-manager/` with `PYTHONPATH=src`:
+
+- `python -S -B -m unittest discover -s tests -v`: **139 tests passed** in 1.014 seconds, with zero failures/errors. This includes all 78 unchanged transport tests and 61 new development-probe tests. Synthetic sockets/events/clocks guard against live connections and cover fixed queries, fragmented frames, bounded deadlines/output, cancellation/cleanup, login/EOF errors, safe summaries, USB/network parsing, raw-capture confinement, and inert CLI/import behavior.
+- All 18 fixed query types were manually executed against the actual router. E11 was rechecked after interface-header parsing fixes. See the capability report for the exact E01–E18 ledger; no SMS or guessed vendor/AT operations were issued and no router settings were altered by the commands.
+- All 40 legacy paths and SHA-256 hashes match the Task 003 baseline. Production package files, both original transport test modules, and `pyproject.toml` also match that baseline.
+- `git diff --check` passes, including the three new files reviewed through a temporary index. The normal index remains unstaged. On branch `main`, changes comprise six modified documentation/ignore files and three new files: the development probe, its tests, and the capability report. No Task 003 commit was created.
+- No hardware raw captures were retained or tracked; `--capture-raw` was never used for hardware. The `/artifacts/d2-private/` ignore rule is effective. Offline capture tests use temporary synthetic data only.
+
+Task 003 is complete within its observational scope with unknowns explicitly retained. At Task 003 completion, Task 004 had not begun. The separately approved telemetry investigation follows; this foundation plan stays active for outstanding work.
+
+### Task 004 verification
+
+Offline verification and scoped authenticated discovery complete:
+
+- Python 3.13.15, `PYTHONPATH=src`, `python -S -B -m unittest discover -s tests -v`: **190 tests passed** in 0.974 seconds, without site packages, browser dependencies, or live hardware. This includes the intentional development-summary privacy expectation changes; all 78 original transport tests remain unchanged.
+- `node --test tests/test_d2_browser_probe.js`: **36 tests passed** in 693.5684 ms using fake browser requests/storage/streams and built-in Node facilities, with no npm dependencies. `node --check tools/d2_browser_probe.js` also passed.
+- The sanitized observed fixture `tests/fixtures/d2/authenticated-report.json` exactly preserves the user-provided report with notes: seven successful responses and 49 typed fields, with no seven-or-more-digit strings. Tests that reconstruct hidden values use explicitly synthetic data. Missing/null/unsafe values, privacy masking, bounded reads/deadlines/cancellation, and authentication staying in origin remain offline concerns.
+- Actual firmware/admin source inspection identified the separate Vue UI, exact seven GET paths, response/view bindings, and authentication mechanism. HTTPS root returned 200; the two unauthenticated dashboard telemetry requests returned 401. The user-supplied authenticated Brave report returned HTTP/body code 200 and object data for all seven GETs; other endpoints' unauthenticated requirements were not isolated.
+- All 40 legacy paths/hashes, production package files, original transport tests, and package metadata remain unchanged. No router-setting writes or tracked sensitive captures were introduced.
+- Git remains on `main` with an unstaged normal index and no Task 004 commit. Aggregate Task 003/004 status is six modified files and twelve untracked files; Task 004 relative to its starting snapshot changes eight files and adds nine files. Diff review and `git diff --check` pass; all twelve untracked files also pass read-only `git diff --no-index --check` against `NUL`. The normal Git index was not changed.
+
+Task 004 is complete within its observational scope. Raw labels/typed fields are established; masked identifier content, omitted operator/PCI/retry values, units, status semantics, unavailable-field conclusions, modem firmware revision, absent/locked SIM states, and firmware variations remain explicitly unverified. No production telemetry/carrier implementation or Task 005 work occurred. This plan stays active for deferred foundation work.
 
 ## 9. Requested outcome summary
 
@@ -330,4 +401,4 @@ Remaining limits are documented in section 7: uninterruptible OS DNS work can le
 - **Refactor:** device SMS normalization, DITO OTP/content rules, MyDITO browser/account code, saved-account schema and cache identity, time/unit handling, controller orchestration, and carrier-specific UI coupling.
 - **Remove from the new runtime:** duplicate helper/Tkinter application flows, raw sensitive debugging, remote-page application overlay/mailboxes, hardcoded router availability, global unbound account cache assumptions, and old branding/launch/build entry points. Preserve `old/` intact.
 - **Build new:** minimal package/test/dependency setup, verified SIM/network/signal/device-capability queries, carrier/service contracts, missing polling/cache implementations if unrecoverable, neutral local UI, account-bound session/cache lifecycle, and later Smart support/outbound SMS.
-- **Completed foundation steps:** Task 001 established the package and characterized the preserved D2 SMS transport; Task 002 completed scoped transport hardening with 78 passing offline tests. Task 003 and later remain deferred.
+- **Completed foundation steps:** Task 001 established the package and characterized the preserved D2 SMS transport; Task 002 completed scoped transport hardening with 78 passing offline tests. Task 003 completed observational hardware discovery, a development probe, and a capability report with 139 passing offline tests. Task 004 completed firmware/admin-UI telemetry discovery with seven sanitized authenticated GET observations, 190 passing Python tests, and 36 passing Node tests; production cellular/carrier detection and Task 005 remain deferred.

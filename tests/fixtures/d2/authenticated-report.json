@@ -1,0 +1,307 @@
+{
+  "_fixture_notes": [
+    "User-provided sanitized browser-probe report from the actual D2; not a raw HTTP response or authentication capture.",
+    "Masked and omitted values do not reveal original contents, non-emptiness, identifier validity, operator identity, or version text.",
+    "The wireless fields object is empty after filtering; this does not establish that the raw response data object was empty.",
+    "Tests reconstruct unknown raw values with explicitly synthetic placeholders; they are not hardware observations."
+  ],
+  "report": {
+    "probe": "SIM Manager D2 Task 004",
+    "requests": [
+      {
+        "query": "wireless",
+        "method": "GET",
+        "path": "/web/v1/dashboard/wirelessinfo",
+        "http_status": 200,
+        "summary": {
+          "payload_type": "object",
+          "fields": {},
+          "other_values": "omitted",
+          "code": 200,
+          "data_state": "object"
+        }
+      },
+      {
+        "query": "internet",
+        "method": "GET",
+        "path": "/web/v1/dashboard/internetinfo",
+        "http_status": 200,
+        "summary": {
+          "payload_type": "object",
+          "fields": {
+            "data.Status": {
+              "type": "string",
+              "value": "Connected"
+            },
+            "data.Operator": {
+              "type": "string",
+              "value": "omitted"
+            },
+            "data.Band": {
+              "type": "string",
+              "value": "1/28"
+            },
+            "data.CellId": {
+              "type": "string",
+              "value": "masked"
+            },
+            "data.ECellId": {
+              "type": "string",
+              "value": "masked"
+            },
+            "data.RSRP": {
+              "type": "string",
+              "value": "-91"
+            },
+            "data.RSRQ": {
+              "type": "string",
+              "value": "-9"
+            },
+            "data.SINR": {
+              "type": "string",
+              "value": "22"
+            }
+          },
+          "other_values": "omitted",
+          "code": 200,
+          "data_state": "object"
+        }
+      },
+      {
+        "query": "wan",
+        "method": "GET",
+        "path": "/web/v1/dashboard/waninfo",
+        "http_status": 200,
+        "summary": {
+          "payload_type": "object",
+          "fields": {
+            "data.ConnectMethod": {
+              "type": "string",
+              "value": "GSM"
+            },
+            "data.ConnectMode": {
+              "type": "string",
+              "value": "omitted"
+            },
+            "data.IpAddress": {
+              "type": "string",
+              "value": "masked"
+            },
+            "data.MacAddress": {
+              "type": "string",
+              "value": "masked"
+            },
+            "data.SubnetMask": {
+              "type": "string",
+              "value": "masked"
+            },
+            "data.DnsServer": {
+              "type": "string",
+              "value": "masked"
+            }
+          },
+          "other_values": "omitted",
+          "code": 200,
+          "data_state": "object"
+        }
+      },
+      {
+        "query": "device",
+        "method": "GET",
+        "path": "/web/v1/dashboard/deviceinfo",
+        "http_status": 200,
+        "summary": {
+          "payload_type": "object",
+          "fields": {
+            "data.ProductModel": {
+              "type": "string",
+              "value": "omitted"
+            },
+            "data.IMEI": {
+              "type": "string",
+              "value": "masked"
+            },
+            "data.SerialNumber": {
+              "type": "string",
+              "value": "masked"
+            },
+            "data.SoftwareVersion": {
+              "type": "string",
+              "value": "omitted"
+            },
+            "data.MacAddress": {
+              "type": "string",
+              "value": "masked"
+            },
+            "data.USIMStatus": {
+              "type": "string",
+              "value": "Ready"
+            },
+            "data.UICCID": {
+              "type": "string",
+              "value": "masked"
+            },
+            "data.IMSI": {
+              "type": "string",
+              "value": "masked"
+            }
+          },
+          "other_values": "omitted",
+          "code": 200,
+          "data_state": "object"
+        }
+      },
+      {
+        "query": "wanStatus",
+        "method": "GET",
+        "path": "/web/v1/status/wanstatus",
+        "http_status": 200,
+        "summary": {
+          "payload_type": "object",
+          "fields": {
+            "data.ConnectionStatus.ConnectMode": {
+              "type": "string",
+              "value": "LTE"
+            },
+            "data.ConnectionStatus.ConnectStatus": {
+              "type": "string",
+              "value": "Connected"
+            },
+            "data.ConnectionStatus.USIMStatus": {
+              "type": "string",
+              "value": "Ready"
+            },
+            "data.ConnectionStatus.Band": {
+              "type": "string",
+              "value": "1/28"
+            },
+            "data.ConnectionStatus.CellId": {
+              "type": "string",
+              "value": "masked"
+            },
+            "data.ConnectionStatus.PCI": {
+              "type": "string",
+              "value": "omitted"
+            },
+            "data.ConnectionStatus.IMEI": {
+              "type": "string",
+              "value": "masked"
+            },
+            "data.ConnectionStatus.IMSI": {
+              "type": "string",
+              "value": "masked"
+            },
+            "data.ConnectionStatus.RSRP0": {
+              "type": "string",
+              "value": "-91"
+            },
+            "data.ConnectionStatus.RSRP1": {
+              "type": "string",
+              "value": "-96"
+            },
+            "data.ConnectionStatus.RSRQ": {
+              "type": "string",
+              "value": "-9"
+            },
+            "data.ConnectionStatus.RSSI": {
+              "type": "string",
+              "value": "-82"
+            },
+            "data.ConnectionStatus.SINR": {
+              "type": "string",
+              "value": "22"
+            }
+          },
+          "other_values": "omitted",
+          "code": 200,
+          "data_state": "object"
+        }
+      },
+      {
+        "query": "sim",
+        "method": "GET",
+        "path": "/web/v1/setting/network/pinmanagement/simcardinfo",
+        "http_status": 200,
+        "summary": {
+          "payload_type": "object",
+          "fields": {
+            "data.SIMCardState": {
+              "type": "string",
+              "value": "READY"
+            },
+            "data.RetriesPIN": {
+              "type": "string",
+              "value": "omitted"
+            },
+            "data.PINCheckEnabled": {
+              "type": "string",
+              "value": "OFF"
+            }
+          },
+          "other_values": "omitted",
+          "code": 200,
+          "data_state": "object"
+        }
+      },
+      {
+        "query": "deviceDetails",
+        "method": "GET",
+        "path": "/web/v1/setting/deviceinfo",
+        "http_status": 200,
+        "summary": {
+          "payload_type": "object",
+          "fields": {
+            "data.ProductModel": {
+              "type": "string",
+              "value": "omitted"
+            },
+            "data.HardwareVersion": {
+              "type": "string",
+              "value": "omitted"
+            },
+            "data.SoftwareVersion": {
+              "type": "string",
+              "value": "omitted"
+            },
+            "data.UBootVersion": {
+              "type": "string",
+              "value": "omitted"
+            },
+            "data.SerialNumber": {
+              "type": "string",
+              "value": "masked"
+            },
+            "data.IMEI": {
+              "type": "string",
+              "value": "masked"
+            },
+            "data.IMSI": {
+              "type": "string",
+              "value": "masked"
+            },
+            "data.MSISDN": {
+              "type": "string",
+              "value": "masked"
+            },
+            "data.MacAddress": {
+              "type": "string",
+              "value": "masked"
+            },
+            "data.IpAddress": {
+              "type": "string",
+              "value": "masked"
+            },
+            "data.SubnetMask": {
+              "type": "string",
+              "value": "masked"
+            }
+          },
+          "other_values": "omitted",
+          "code": 200,
+          "data_state": "object"
+        }
+      }
+    ],
+    "state_changes_requested": false
+  }
+}

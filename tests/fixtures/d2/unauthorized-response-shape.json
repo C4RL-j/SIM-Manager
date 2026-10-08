@@ -1,0 +1,7 @@
+{
+  "http_status": 401,
+  "body_field_types": {
+    "code": "number",
+    "msg": "string"
+  }
+}

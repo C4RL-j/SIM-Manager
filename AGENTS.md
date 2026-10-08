@@ -54,7 +54,7 @@ Do not create DITO-specific UI logic.
 
 Current phase:
 
-Foundation reboot: Tasks 001 and 002 are complete and verified. The minimal package and D2 SMS/router transport have offline characterization and reliability coverage. Task 003 has not begun; hardware probing, carrier/account features, SIM/signal detection, and GUI work remain deferred. Follow `plans/active/000-foundation-reboot.md` and wait for an explicitly approved next task.
+Foundation reboot: Tasks 001–004 are complete within their approved scopes. Task 004 established seven firmware-evidenced read-only telemetry GETs and a sanitized authenticated report from the user's legitimate Brave session. Verified raw labels/field types do not establish identifier validity, radio units, registration/roaming, or carrier identity. Future discovery must inspect firmware/web assets before invoking candidate getters and use only established read-only requests. Do not guess AT/UBus/CGI/RPC commands or interact with configuration controls. Production detection/carrier logic, account integration, GUI work, and Task 005 remain deferred. Use `docs/devices/D2-HARDWARE-CAPABILITIES.md` for evidence and follow `plans/active/000-foundation-reboot.md`.
 
 The application repository is `sim-manager/`. Initialize Git only inside this directory. `../old/D2-desktop/` is read-only reference material, must not be added to the new repository, and must not be changed without explicit authorization.
 
