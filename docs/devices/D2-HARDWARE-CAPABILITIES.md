@@ -4,13 +4,40 @@ Date: 2026-10-07 (Asia/Irkutsk)
 
 Updated: 2026-10-08 (Asia/Irkutsk)
 
-Status: Tasks 003–007 and 006.1 complete within their approved scopes; Task 008 not started
+Status: Tasks 003–008 and 006.1 complete within their approved scopes; Task 009 not started
 
 This report records read-only observations from the router identified by the user as a Smart Bro Home WiFi D2. It is discovery evidence, not a production device API or a carrier-detection implementation. Model, module, SIM, and cellular identity must be established from actual responses rather than the router's branding.
 
 ## Setup and evidence classifications
 
 Task 007 initially found no responding Telnet banner or HTTPS handshake within bounded deadlines. After the user connected to the D2, public firmware inspection and direct application login succeeded. The Task 007 section below supersedes those initial connectivity limitations and establishes the production session path; historical observations retain their original scope.
+
+## Task 008 — read-only SMS inbox
+
+The production path is `router.fetch_sms_response` → `D2MessageClient`/`normalize_messages` → `LiveMessageService` → native Messages page. The original transport is unchanged. It opens only the existing local direct Telnet shell at `192.168.1.1:2323` and invokes `ubus -t 10 call cped cmd` through the preserved command construction for the `sms.get.inboxdata` getter. The exact existing wire command is documented below; no guessed APIs, shell-enabling actions or HTTP authorization values are added. The default request remains `StartPos=0`, `ReadNum=3`.
+
+Legacy parser evidence: `old/D2-desktop/otp.py` accepts `data` as an object or JSON string containing `ItemList`, with `SmsId`, `number`, `smsdate`, `smstime`, and `content`. These become optional identity, sender and timestamp text plus body in the neutral model. Legacy `readed` copying does not verify its meaning; read/unread state and storage metadata are deliberately absent. IDs need not be unique: exact duplicates with an ID collapse, conflicting same-ID records remain with a partial warning. Router order and date/time text are preserved; timezone and newest-first semantics remain unknown. The transport's UTF-8 replacement behavior is retained; no GSM/UCS2 decoder is invented.
+
+Only the Messages UI displays private content. Models have opaque repr/str, failures use closed codes, and no message/OTP/sender/ID/raw-envelope logs, files, fixtures or live screenshots are created. The inbox is kept in memory and cleared from widgets/controller results on close. Demo uses independent synthetic messages and remains explicitly DEMO, never a fallback.
+
+Historical Tasks 003–007 did not exercise the SMS payload on hardware. Sending, deletion, read-state changes and configuration operations remain unimplemented. The three-record limit is visible in the UI; total storage size, pagination, multipart reassembly, other firmware and firmware-internal effects of getter execution remain unverified.
+
+### Controlled live evidence — 2026-10-08
+
+After all offline suites passed, a native Windows application run used only the local D2 and the unchanged getter. First Messages navigation and its own Refresh made exactly **two getter calls**, each returning **3 messages**, available, non-partial and issue-free. Selection/full-body consistency was checked in memory without exporting values. A Qt heartbeat continued during retrieval. Both raw three-record sets, including raw `readed` fields, and both normalized inboxes compared equal in memory. No HTTP sign-in/session was needed, confirming this firmware's independent SMS path.
+
+| Finding | Classification | Live observation / limit |
+| --- | --- | --- |
+| Existing direct Telnet shell/getter/framing | VERIFIED LIVE | Both bounded getter calls completed through the unchanged `192.168.1.1:2323` transport and historical marker. No shell login/enabling or alternate API was used. |
+| Envelope payload | VERIFIED LIVE | `data` is a JSON string containing an `ItemList` array with 3 records in both reads; object-form payload remains legacy/synthetic evidence only. |
+| `SmsId` | VERIFIED TYPE | Integer in the observed records; values omitted. Uniqueness/stability beyond these two equal reads remains unknown. |
+| `number`, `smsdate`, `smstime`, `content` | VERIFIED TYPE | Strings in the observed records; values omitted. Timestamp timezone, sorting and other modem encodings remain unknown. |
+| `readed` | VERIFIED TYPE; UNKNOWN SEMANTICS | Boolean in the observed records. Values omitted, unchanged across the two reads. No read/unread label or mutation API is inferred. |
+| UI and Refresh | VERIFIED LIVE | Three rows each cycle, selection/full-content consistency, responsive event loop, clean exit 0, successful shutdown and cleared widgets. |
+| Diagnostics/privacy | VERIFIED VALIDATION | Zero application stdout/stderr bytes and zero log records; only counts/status/schema metadata reported. No live screenshot, raw capture or message fixture was saved. |
+| Read-only behavior | VERIFIED REQUESTS and RETURNED RECORDS | Only two getter requests; no send/delete/mark-read/configuration command. Returned records were unchanged. This does not audit all storage or firmware-internal effects. |
+
+Verification totals: **429 backend/service**, **84 GUI**, **36 Node** tests, all passing. Packaging/native launch, syntax, whitespace/diff, privacy, unchanged production transport/status/session and all 40 legacy hashes passed. Task 008 is complete; Task 009 remains unstarted.
 
 ## Task 007 — direct authentication and LIVE validation
 

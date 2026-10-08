@@ -1,6 +1,6 @@
 # SIM Manager
 
-A lightweight Windows SIM management application in development. Tasks 001–006 and 006.1 are complete within their approved scopes. Task 007 (direct local D2 authentication and live status) is complete. The native PySide6 desktop shell displays normalized device state through Overview, Messages, and Settings. Python 3.11 or newer is required.
+A lightweight Windows SIM management application in development. Tasks 001–008 and 006.1 are complete within their approved scopes, including direct local D2 authentication/live status and the read-only Messages inbox. The native PySide6 desktop shell provides Overview, Messages, and Settings. Python 3.11 or newer is required.
 
 Task 007 adds direct router authentication and LIVE status without a browser. Start normal mode, choose **Sign in**, and enter the router username and masked password in SIM Manager. Both fields start blank because the firmware has no verified default username. Credentials are used only in memory and are never saved. Successful sign-in automatically retrieves the seven verified status getters; **Refresh** reads them again. LIVE marks real snapshots; explicit `--demo` remains independent and permanently marked DEMO. Live hardware validation passed: legitimate login, all seven getters, complete normalized state, LIVE GUI display, Refresh and clean shutdown.
 
@@ -10,15 +10,19 @@ The verified firmware protocol is `POST /web/v1/user/login` with JSON `{username
 
 Login has a 20-second deadline; the subsequent seven-getter refresh has one separate 20-second deadline and 256 KiB per-response limit. Both use one cancellable worker, and GUI shutdown joins for at most one second. Safe UI messages distinguish authentication required/rejected, unreachable router, connection/TLS trouble, malformed data and partial status. Carrier stays Unknown; signal units, registration and roaming remain unverified.
 
+Open **Messages** to load up to three messages through the preserved local D2 Telnet/UBus getter. Select a row to view its complete plain-text content. Messages has its own **Refresh** and **Cancel** actions, independent of Overview and its HTTP admin session. Failed or cancelled reads keep the displayed inbox; malformed individual entries produce a partial warning without discarding readable messages. An unreadable partial response cannot establish that a previously displayed inbox is empty.
+
+SMS content and sender identifiers appear only in the requested Messages view, remain in memory, and are never written to application logs or diagnostic errors. Private message models have opaque repr/str output; closing clears the visible content and cancels both read workers within one shared one-second join budget. Explicit `--demo` uses synthetic messages, keeps DEMO visible, and never replaces failed live reads with demo data. Sending, deletion, mark-read actions, message persistence, carrier OTP/account integration, and Task 009 are outside Task 008.
+
 ## First desktop milestone
 
-The native Qt Widgets shell is a visual milestone. Overview displays safe SIM/network/signal/WAN state with unknown values left explicit and Carrier Unknown. Messages is a page shell; the raw SMS transport is not wired directly into the GUI without a normalized message service. Settings contains read-only router-address/status placeholders and app information, with no credential editing or persistence.
+The native Qt Widgets shell started as a visual milestone. Overview displays safe SIM/network/signal/WAN state with unknown values left explicit and Carrier Unknown. Messages now consumes a normalized message service rather than raw SMS transport responses. Settings contains read-only router-address/status information and app information, with no credential editing or persistence.
 
 Normal mode initially reports Authentication required without network I/O. Explicit Sign in creates a direct router session and refreshes live status; no browser opens. Explicit `--demo` uses sanitized Task 004 fixture-derived state and labels the UI DEMO. Demo is never substituted silently for live data. The existing snapshot model is named `DeviceState`; no backend rename to the conceptual `DeviceSnapshot` is required.
 
-Refresh uses the service interface outside the GUI thread, blocks overlapping requests, and reports safe loading/error states. Closing requests cooperative cancellation and a worker join bounded to one second; repeated shutdown is non-blocking. Shipped production/demo providers are bounded; arbitrary injected providers that ignore cancellation cannot be forcibly stopped, though daemon workers cannot block process shutdown. Carrier login/account integration, tray behavior, charts, configuration storage and Task 008 remain deferred.
+Overview and Messages Refresh use their service interfaces outside the GUI thread, block overlapping requests for each page, and report safe loading/error states. Closing requests cooperative cancellation and worker joins within one shared second; repeated shutdown is non-blocking. Shipped production/demo providers are bounded; arbitrary injected providers that ignore cancellation cannot be forcibly stopped, though daemon workers cannot block process shutdown. Carrier login/account integration, tray behavior, charts, configuration storage and Task 009 remain deferred.
 
-Task 006.1 polishes the existing UI: compact routine status, warnings/errors as banners, prominent Carrier Unknown/Network/SIM information, all six signal fields, compact connection details, and small monochrome navigation icons. Refresh appears only on Overview; Cancel remains available on any page while work is running. The DEMO badge and offline-fixture disclosure persist across every page. Settings groups read-only router and application information; Messages remains unconnected.
+Task 006.1 polished the existing UI: compact routine status, warnings/errors as banners, prominent Carrier Unknown/Network/SIM information, all six signal fields, compact connection details, and small monochrome navigation icons. At that milestone, Refresh appeared only on Overview and Messages remained unconnected. Overview Cancel remains available on any page while status work is running; Task 008 adds separate Messages actions. The DEMO badge and offline-fixture disclosure persist across every page. Settings groups read-only router and application information.
 
 ## Install and launch on Windows
 
@@ -46,7 +50,9 @@ The transport now preserves Telnet state across reads, recognizes a terminated s
 
 `fetch_sms_response` keeps its five existing positional parameters and adds keyword-only `stop_event` and `max_response_bytes`. An optional event with `is_set()` requests cancellation, reported as `RouterCancelledError`. The default byte limit is 1 MiB per read phase (banner, wake-up, command response), including Telnet control bytes. EOF or a reset raises `RouterDisconnectedError`, a subclass of `RouterConnectionError`.
 
-SMS envelopes remain raw. Stringified or otherwise loosely shaped `data` is preserved, and the last successful outer envelope can still win over a later error envelope. Response selection prevents nested SMS objects from overriding valid or malformed outer envelopes. Transparent-wrapper fallback remains when no top-level envelope exists; traversal stops at any dictionary containing both `code` and `msg`, including error envelopes. The public JSON extraction helper still enumerates nested objects. Message normalization and stronger payload-schema validation are deferred.
+The transport still returns raw SMS envelopes. Stringified or otherwise loosely shaped `data` is preserved, and the last successful outer envelope can still win over a later error envelope. Response selection prevents nested SMS objects from overriding valid or malformed outer envelopes. Transparent-wrapper fallback remains when no top-level envelope exists; traversal stops at any dictionary containing both `code` and `msg`, including error envelopes. The public JSON extraction helper still enumerates nested objects. Task 008 adds `devices/d2/messages.py` above this unchanged transport: it validates the selected envelope and object/JSON-string `data.ItemList`, then creates carrier-neutral `Message` and `MessageInbox` values for `LiveMessageService` and the UI.
+
+The optional normalized fields are message identity (`SmsId`), sender (`number`), raw router date/time text (`smsdate`/`smstime`), and body (`content`). Missing or malformed fields remain usable where possible; unsupported envelopes fail safely. Exact duplicate-ID rows collapse, conflicting duplicate-ID rows remain, and router order is preserved. The three-record window is not full-inbox paging or a verified newest-first order. Timestamp timezone, ID uniqueness, `readed` meaning, storage metadata, other firmware shapes, and non-UTF-8 modem encodings remain unverified. No read/unread or storage meaning is invented. SMS requests retain the 3-second connection limit, 30-second response limit, and 1 MiB per-phase wire cap; the normalized client rejects results after its 36-second deadline and honors cooperative cancellation.
 
 Task 005 adds the normalized Device boundary: immutable SIM, network, radio, WAN, carrier-evidence, snapshot, and partial-error models; a D2 parser; and one aggregate `get_device_state()` client. Known fields remain optional, and a failed endpoint must not discard available data. Band `1/28` becomes `(1, 28)` without carrier-aggregation meaning. Signal fields use unit-neutral names with `units_verified=False`. Identifiers/addresses are represented by availability rather than full values; model repr/str omits all details. Carrier evidence remains unknown.
 
@@ -60,6 +66,7 @@ src/sim_manager/
 ├── __main__.py                      # native app entry point
 ├── app.py
 ├── models.py
+├── message_models.py                 # private, carrier-neutral inbox values
 ├── services/                        # providers and safe presentation
 ├── resources/                        # sanitized demo + public D2 certificate
 ├── ui/                              # Qt window and three pages
@@ -69,6 +76,7 @@ src/sim_manager/
         ├── __init__.py
         ├── demo.py                   # sanitized fixture → normalized state
         ├── router.py
+        ├── messages.py              # SMS envelope → normalized inbox
         ├── errors.py                 # closed safe infrastructure errors
         ├── session.py                # direct login and bounded verified HTTPS
         ├── status.py                 # fixed seven-getter status client
@@ -82,8 +90,11 @@ tests/
 ├── test_d2_status_parser.py
 ├── test_d2_status_client.py
 ├── test_device_services.py
+├── test_d2_messages.py
+├── test_message_services.py
 ├── test_d2_browser_probe.js          # separate Node development-probe tests
 ├── gui/test_desktop.py              # separate Qt tests
+├── gui/test_messages.py             # synthetic inbox/UI lifecycle tests
 └── fixtures/d2/                     # sanitized observations/synthetic source
 tools/
 ├── d2_discovery.py
@@ -127,11 +138,13 @@ Task 005 verification passed **260 Python tests** (190 prior tests plus 31 parse
 
 Task 006 passed **285 backend/service tests**, **30 GUI tests**, and **36 Node tests** on Python 3.13.15 and PySide6/Qt 6.11.2. Native Windows production/demo rendering, refresh, and closure passed with no refresh workers remaining. Editable installation and both installed launch commands worked from outside the repository without `PYTHONPATH`; the wheel includes the exact sanitized demo resource. Legacy/backend integrity, syntax, privacy, and diff/whitespace checks passed. These GUI checks establish no new live-router/authentication capability.
 
-Task 006.1 passed **285 backend/service tests**, **38 GUI tests**, and **36 Node tests**. Native Windows normal/demo layouts were checked on all three pages at 1120×760, 840×600, and maximized (1600×837 on the verification display), without clipping, overlap, or scrolling for these states. Scroll areas remain available for longer content or larger fonts. Backend/model/service files and all 40 legacy files are unchanged; Task 007 remains unstarted.
+Task 006.1 passed **285 backend/service tests**, **38 GUI tests**, and **36 Node tests**. Native Windows normal/demo layouts were checked on all three pages at 1120×760, 840×600, and maximized (1600×837 on the verification display), without clipping, overlap, or scrolling for these states. Scroll areas remain available for longer content or larger fonts. Backend/model/service files and all 40 legacy files were unchanged; Task 007 was unstarted at that verification point.
 
-Task 007 passed **368 backend/service tests**, **56 GUI tests**, and **36 Node tests** (460 total). Direct local login and two complete seven-getter cycles passed through the native application, including Refresh and LIVE presentation. Verified displayed values were SIM Ready, PIN check Off, LTE/Connected, bands 1/28, RSRP -87, secondary RSRP -95, RSRQ -9, RSSI -76, SINR 23, WAN Connected and address availability Reported; Carrier remained Unknown and signal units remained unverified. The validation window closed cleanly. Both exact installed normal/demo CLI launches exited successfully with empty output and no owned orphan processes. Editable installation, wheel resource checks, syntax, privacy, legacy hashes and tracked/untracked whitespace/diff review passed. The wheel includes the public certificate and exact sanitized demo fixture. Server token lifetime, actual forced-expiry timing, hardware rejected-password code, logout invalidation and other firmware remain unverified; expiry/relogin/error paths are covered offline. No settings changed, credentials persisted or raw authenticated captures were retained. Task 008 has not begun.
+Task 007 passed **368 backend/service tests**, **56 GUI tests**, and **36 Node tests** (460 total). Direct local login and two complete seven-getter cycles passed through the native application, including Refresh and LIVE presentation. Verified displayed values were SIM Ready, PIN check Off, LTE/Connected, bands 1/28, RSRP -87, secondary RSRP -95, RSRQ -9, RSSI -76, SINR 23, WAN Connected and address availability Reported; Carrier remained Unknown and signal units remained unverified. The validation window closed cleanly. Both exact installed normal/demo CLI launches exited successfully with empty output and no owned orphan processes. Editable installation, wheel resource checks, syntax, privacy, legacy hashes and tracked/untracked whitespace/diff review passed. The wheel includes the public certificate and exact sanitized demo fixture. Server token lifetime, actual forced-expiry timing, hardware rejected-password code, logout invalidation and other firmware remain unverified; expiry/relogin/error paths are covered offline. No settings changed, credentials persisted or raw authenticated captures were retained. Task 008 was unstarted at that verification point.
 
 ## Transport assumptions
+
+Task 008 passed **429 backend/service tests**, **84 GUI tests**, and **36 Node tests** (549 total). Controlled native Windows validation against the local D2 performed exactly two inbox getter calls: initial Messages load and its Refresh each returned **3 messages**, available and complete with no issues. List/detail selection matched the normalized content in memory, the GUI remained responsive, both returned record sets were unchanged, and closure cleared message widgets with exit 0. Application stdout/stderr and log-record counts were zero; no SMS values, raw captures or live screenshots were exported. The HTTP session was unnecessary for these inbox reads. Normal/demo installed native launches, editable/wheel packaging, all 50 Python AST parses, TOML/JavaScript syntax, legacy integrity, privacy and tracked/untracked whitespace/diff review passed. No SMS or configuration write was requested; Task 009 remains unstarted. Full evidence and limits are in `docs/devices/D2-HARDWARE-CAPABILITIES.md`.
 
 The supported path requires an already available direct Telnet shell and the existing `cped` UBus SMS command. Login prompts are rejected; the transport does not enable a shell, authenticate, or discover router/modem capabilities. Task 003 confirmed the default direct shell and standalone-line framing for read-only discovery queries. It did not read SMS, validate the historical SMS marker or payload forms on hardware, or test other firmware versions.
 
@@ -139,7 +152,7 @@ Balanced malformed JSON or shell noise can be skipped. An unclosed leading brace
 
 Cancellation and deadlines use short socket polls (up to 0.5 seconds normally, 0.1 seconds with `stop_event`). Short cancellation polls preserve the legacy 0.5-second idle wait for banner/wake-up reads, capped by their respective 0.7/0.25-second phase deadlines. Connection setup uses a daemon worker and caller polls of at most 0.05 seconds. The caller can abandon a blocked connection attempt, and a late socket is closed. The OS DNS call itself cannot be interrupted; repeated abandoned DNS calls can temporarily accumulate daemon workers. No blocking worker join is required for shutdown.
 
-Diagnostic logs and exception output must mask or omit full phone numbers/MSISDNs, IMSIs, ICCIDs, OTPs, sensitive SMS bodies, authentication cookies, tokens, and passwords. Returned SMS data is sensitive and must not be logged wholesale.
+Diagnostic logs and exception output must mask or omit full phone numbers/MSISDNs, IMSIs, ICCIDs, OTPs, authentication cookies, tokens, and passwords. All SMS bodies and raw SMS responses must be omitted from logs and exception text. Test fixtures use only synthetic messages; live validation reports counts/status without message contents.
 
 ## Manual read-only discovery
 

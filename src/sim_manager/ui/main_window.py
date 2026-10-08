@@ -1,5 +1,7 @@
 """Native shell for normalized device state, with no device protocol knowledge."""
 
+from time import monotonic
+
 from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import (
@@ -10,9 +12,11 @@ from PySide6.QtWidgets import (
 from sim_manager.models import DeviceState
 from sim_manager.services.device import SnapshotProvider
 from sim_manager.services.presentation import present_device
+from sim_manager.services.messages import MessageProvider
 
 from .authentication import RouterSignInDialog
 from .icons import navigation_icon
+from .messages_refresh import MESSAGE_FAILURES, MessagesRefreshController
 from .pages.messages import MessagesPage
 from .pages.overview import OverviewPage
 from .pages.settings import SettingsPage
@@ -20,10 +24,17 @@ from .refresh import AUTHENTICATION_MESSAGES, RefreshController
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, provider: SnapshotProvider, *, demo: bool = False) -> None:
+    def __init__(
+        self, provider: SnapshotProvider, *, demo: bool = False,
+        message_provider: MessageProvider | None = None,
+    ) -> None:
         super().__init__()
         if getattr(provider, "is_demo", False) is True and not demo:
             raise ValueError("Demo providers require explicit demo mode.")
+        if message_provider is not None and getattr(message_provider, "is_demo", False) is True and not demo:
+            raise ValueError("Demo message providers require explicit demo mode.")
+        if message_provider is not None and demo and getattr(message_provider, "is_demo", False) is not True:
+            raise ValueError("Demo mode requires a demo message provider.")
         self._demo = demo
         self._closed = False
         self._authentication_required = False
@@ -128,7 +139,7 @@ class MainWindow(QMainWindow):
 
         self.pages = QStackedWidget()
         self.overview_page = OverviewPage()
-        self.messages_page = MessagesPage()
+        self.messages_page = MessagesPage(demo=demo)
         self.settings_page = SettingsPage(router_address=self._router_address)
         for page in (self.overview_page, self.messages_page, self.settings_page):
             scroller = QScrollArea()
@@ -142,6 +153,17 @@ class MainWindow(QMainWindow):
         self.refresh_controller.failed.connect(self._show_refresh_error)
         self.refresh_controller.authentication_failed.connect(self._show_authentication_error)
         self.refresh_controller.busy_changed.connect(self._set_busy)
+        self.messages_controller = (
+            MessagesRefreshController(message_provider, self) if message_provider is not None else None
+        )
+        self._messages_requested = False
+        self.messages_page.set_available(self.messages_controller is not None)
+        if self.messages_controller is not None:
+            self.messages_controller.inbox_ready.connect(self.messages_page.render)
+            self.messages_controller.failed.connect(self._show_messages_error)
+            self.messages_controller.busy_changed.connect(self.messages_page.set_busy)
+        self.messages_page.refresh_requested.connect(self.start_messages_refresh)
+        self.messages_page.cancel_requested.connect(self._cancel_messages_refresh)
         self.refresh_button.clicked.connect(self.start_refresh)
         self.cancel_button.clicked.connect(self._cancel_refresh)
         self.sign_in_button.clicked.connect(self.open_sign_in)
@@ -159,6 +181,28 @@ class MainWindow(QMainWindow):
         self.subtitle_label.setText((
             "SIM and connection status", "Read-only message workspace", "Application and connection information",
         )[index])
+        if index == 1 and not self._messages_requested:
+            self.start_messages_refresh()
+
+    def start_messages_refresh(self) -> bool:
+        if self._closed or self.messages_controller is None:
+            return False
+        started = self.messages_controller.start()
+        if started:
+            self._messages_requested = True
+        return started
+
+    def _cancel_messages_refresh(self) -> None:
+        if self.messages_controller is not None and self.messages_controller.busy:
+            self.messages_controller.cancel()
+            self.messages_page.set_cancelling()
+
+    def _show_messages_error(self, message: str) -> None:
+        allowed = set(MESSAGE_FAILURES.values())
+        message = message if type(message) is str and message in allowed else "SMS service unavailable"
+        self.messages_page.set_notice(
+            message, "warning" if message == "Messages refresh cancelled" else "error",
+        )
 
     def _set_status(self, text: str, level: str = "info") -> None:
         if level == "ok":
@@ -265,9 +309,23 @@ class MainWindow(QMainWindow):
         self._update_sign_in()
         self._set_status(message, "warning" if message in ("Authentication rejected", "Sign-in cancelled", "Authentication required") else "error")
 
-    def closeEvent(self, event: QCloseEvent) -> None:
+    def shutdown(self) -> bool:
+        """Cancel both independent reads before one shared bounded join budget."""
         self._closed = True
         if self._sign_in_dialog is not None:
             self._sign_in_dialog.reject()
-        self.refresh_controller.shutdown()
+        self.refresh_controller.cancel()
+        if self.messages_controller is not None:
+            self.messages_controller.cancel()
+        deadline = monotonic() + 1.0
+        status_stopped = self.refresh_controller.shutdown(timeout=max(0.0, deadline - monotonic()))
+        messages_stopped = (
+            self.messages_controller.shutdown(timeout=max(0.0, deadline - monotonic()))
+            if self.messages_controller is not None else True
+        )
+        self.messages_page.clear_private_content()
+        return status_stopped and messages_stopped
+
+    def closeEvent(self, event: QCloseEvent) -> None:
+        self.shutdown()
         event.accept()

@@ -4,9 +4,9 @@ Date: 2026-10-07
 
 Updated: 2026-10-08 (Asia/Irkutsk)
 
-Status: Audit complete; Tasks 001–007 and Task 006.1 complete within approved scopes; Task 008 not started
+Status: Audit complete; Tasks 001–008 and Task 006.1 complete; Task 009 not started
 
-Scope: Historical audit, transport foundation, read-only D2 hardware/telemetry discovery, normalized device state, first native desktop shell and UI polish, and future migration plan
+Scope: Historical audit, transport foundation, read-only D2 hardware/telemetry discovery, normalized device state, native desktop shell and UI polish, read-only Messages inbox, and future migration plan
 
 ## Decision
 
@@ -356,6 +356,18 @@ Implementation sequence:
 
 The foundation plan stays active because later foundation/account tasks remain deferred. Task 007 verification is recorded separately from historical results below.
 
+### Task 008 — read-only native SMS inbox
+
+Approved scope: reuse the existing D2 Telnet/UBus `sms.get.inboxdata` transport → defensive carrier-neutral message parser/model → in-memory message service → Messages UI. HTTP router authentication remains separate, with no authorization passed to SMS. No SMS sending/deletion/read-state mutation, carrier OTP rules/automation, account integration, persistence, router configuration writes or Task 009 work is authorized. Legacy remains read-only.
+
+1. Inspect legacy SMS/OTP parser and synthetic transport tests to establish supported keys, envelope variants and limits; distinguish source assumptions from observed hardware.
+2. Add private-repr normalized message/inbox models and bounded parser/client/service, tolerant of missing/malformed individual entries, preserving evidence-supported order/identity without inventing read/storage semantics. Add wholly synthetic demo messages and offline coverage.
+3. Replace the Messages placeholder with compact sender/time/preview rows and plain-text selection detail. Add independent background Refresh/cancellation/no overlap, preservation on failure, friendly empty/error/partial states and clean shutdown.
+4. Run full backend/service, GUI and JavaScript suites; review privacy, syntax, packaging/native launches, tracked/untracked whitespace/diff and legacy hashes.
+5. Only after offline tests pass, perform controlled live read-only inbox validation and Refresh. Emit counts/status/schema metadata only, never SMS bodies, sender values, IDs or OTPs; do not save live screenshots/captures. Record actual results and remaining firmware assumptions.
+
+Task 008 is complete within this scope; verification is recorded separately below. The foundation plan stays active for later deferred tasks. Task 009 remains unstarted.
+
 ### Deferred authenticated MyDITO adapter and account views — future scope only
 
 The earlier Task 006 proposal below is not the approved Task 006. It remains unassigned future account/browser work and is not authorized by the native-shell task.
@@ -504,10 +516,21 @@ Verified 2026-10-08 (Asia/Irkutsk), Python 3.13.15 and PySide6/Qt 6.11.2:
 - All 40 legacy paths/SHA-256 hashes and every pre-existing source/test/tool file outside the eight approved source edits remain unchanged. No credentials/session values, cookies, raw authenticated captures or sensitive identifiers were added to source/fixtures; the public PEM is not a secret. Tracked and untracked whitespace and diff review pass. Git remains on `main`, with nine modified tracked files and 29 untracked files across prior work plus Task 007; nothing is staged and no commit was created.
 - No APN/network/band/SMS/reboot/reset/Wi-Fi/SIM-PIN/password/firmware/configuration request was sent. No carrier integration, mapping or Task 008 began. Unknown units, registration/roaming and carrier evidence remain explicit. Task 007 is complete within the approved scope. The foundation plan stays active for later deferred work.
 
+### Task 008 verification
+
+Verified 2026-10-08 (Asia/Irkutsk), Python 3.13.15 and PySide6/Qt 6.11.2:
+
+- **429 backend/service**, **84 GUI** and **36 Node tests** passed, 549 total. Added 61 backend/service and 28 GUI cases for response shapes, missing/malformed fields, encoding/control replacement, duplicates/order, cancellation/deadlines/errors/privacy, selection, independent refresh, demo separation, composition and shared shutdown. All 50 Python AST parses, TOML and JavaScript syntax passed.
+- Exactly two controlled getter calls through the unchanged local D2 Telnet/UBus transport: first native Messages navigation and its Refresh, each yielding **3 complete messages**, no issues. UI selection matched full content in memory, heartbeat confirmed responsiveness, raw/normalized record sets were unchanged, and closure cleared widgets with exit 0. No HTTP session or password prompt was required. Only counts/status/schema metadata left the process: zero application stdout/stderr bytes/log records, no live screenshot/raw capture/message fixture. No send/delete/read-state/configuration request was made; firmware-internal effects remain unknown beyond equal returned records.
+- Live schema confirms JSON-string `data.ItemList`, integer `SmsId`, string sender/date/time/content and boolean `readed`. Read semantics/storage, timezone/newest-first, pagination, multipart/other encodings and other firmware remain unverified. The existing position-zero three-record limit is disclosed; read-state/storage are omitted from the neutral model. No carrier OTP/account logic or Task 009 began.
+- Four new runtime files: `message_models.py`, `devices/d2/messages.py`, `services/messages.py`, `ui/messages_refresh.py`. Four new synthetic test files: `tests/test_d2_messages.py`, `tests/test_message_services.py`, `tests/gui/test_messages.py`, `tests/gui/test_app_messages.py`. Four existing runtime files changed: `app.py`, `ui/main_window.py`, `ui/pages/messages.py`, `ui/theme.py`. Updated AGENTS, README, architecture, workflow, capability report and this plan.
+- Existing-environment editable install and wheel build passed. Both exact installed normal/demo module launches from the workspace parent with no PYTHONPATH/offscreen override opened native windows, closed with exit 0, empty stdout/stderr and no owned orphans. Wheel contains the new runtime modules and unchanged exact public certificate/sanitized status demo resource, excluding tests/tools/legacy. Fresh isolated Qt dependency installation was not separately exercised.
+- All 40 legacy hashes and 53 pre-existing project files outside the ten approved changes match the Task 008 clean baseline, including router transport, HTTP/session/status infrastructure and existing tests/tools. Privacy and tracked/untracked whitespace/diff review pass. Git on `main`: ten modified tracked files, eight new files, nothing staged and no commit created. Task 008 is complete; the foundation plan remains active for future work.
+
 ## 9. Requested outcome summary
 
 - **Keep:** D2 Telnet/UBus inbox protocol and error vocabulary, tested OTP/parser behavior, atomic JSON persistence, pure formatting/masking utilities, selected Windows helpers and UI presentation ideas.
 - **Refactor:** device SMS normalization, DITO OTP/content rules, MyDITO browser/account code, saved-account schema and cache identity, time/unit handling, controller orchestration, and carrier-specific UI coupling.
 - **Remove from the new runtime:** duplicate helper/Tkinter application flows, raw sensitive debugging, remote-page application overlay/mailboxes, hardcoded router availability, global unbound account cache assumptions, and old branding/launch/build entry points. Preserve `old/` intact.
 - **Build new:** minimal package/test/dependency setup, verified SIM/network/signal/device-capability queries, carrier/service contracts, missing polling/cache implementations if unrecoverable, neutral local UI, account-bound session/cache lifecycle, and later Smart support/outbound SMS.
-- **Completed foundation steps:** Task 001 established the package and characterized the preserved D2 SMS transport; Task 002 completed scoped transport hardening with 78 passing offline tests. Task 003 completed observational hardware discovery, a development probe, and a capability report with 139 passing offline tests. Task 004 completed firmware/admin-UI telemetry discovery with seven sanitized authenticated GET observations, 190 passing Python tests, and 36 passing Node tests. Task 005 added normalized device state and an authentication-isolated D2 status client, with 260 passing Python tests and 36 passing Node tests. Task 006 added the runnable native PySide6 shell with 285 backend/service, 30 GUI, and 36 Node tests plus native/packaging checks; Task 007 subsequently completed direct local authentication/live status with 368 backend/service, 56 GUI and 36 Node tests; carrier detection and storage/account features remain deferred. Task 008 is unstarted.
+- **Completed foundation steps:** Task 001 established the package and characterized the preserved D2 SMS transport; Task 002 completed scoped transport hardening with 78 passing offline tests. Task 003 completed observational hardware discovery, a development probe, and a capability report with 139 passing offline tests. Task 004 completed firmware/admin-UI telemetry discovery with seven sanitized authenticated GET observations, 190 passing Python tests, and 36 passing Node tests. Task 005 added normalized device state and an authentication-isolated D2 status client, with 260 passing Python tests and 36 passing Node tests. Task 006 added the runnable native PySide6 shell with 285 backend/service, 30 GUI, and 36 Node tests plus native/packaging checks; Task 007 completed direct local authentication/live status with 368 backend/service, 56 GUI and 36 Node tests. Task 008 completed the read-only live Messages inbox with 429 backend/service, 84 GUI and 36 Node tests plus controlled initial load/Refresh, privacy, native/packaging and integrity checks. Carrier detection and storage/account features remain deferred; Task 009 is unstarted.

@@ -25,6 +25,9 @@ QLabel#status { background: transparent; color: #97a8ba; border: none; padding: 
 QLabel#status[level="ok"] { color: #91d8c8; }
 QLabel#status[level="warning"] { color: #edcf8f; }
 QLabel#status[level="error"] { color: #efb2be; }
+QLabel#messageStatus { color: #97a8ba; }
+QLabel#messageStatus[level="warning"] { color: #edcf8f; }
+QLabel#messageStatus[level="error"] { color: #efb2be; }
 QFrame#statusSurface { background: transparent; border: none; }
 QFrame#statusSurface[level="warning"] { background: #342d20; border: 1px solid #625335; border-radius: 5px; }
 QFrame#statusSurface[level="error"] { background: #35272c; border: 1px solid #65404a; border-radius: 5px; }
@@ -32,6 +35,9 @@ QListWidget { background: transparent; border: none; outline: none; font-size: 1
 QListWidget::item { padding: 13px 15px; margin: 3px 0; border-radius: 6px; }
 QListWidget::item:selected { background: #234039; color: #91efda; font-weight: 600; }
 QListWidget::item:hover:!selected { background: #202b38; }
+QListWidget#messageList::item { padding: 9px 10px; margin: 1px 0; font-size: 13px; }
+QListWidget#messageList::item:selected { font-weight: 400; }
+QPlainTextEdit { background: #141c26; border: 1px solid #2c3745; border-radius: 4px; padding: 7px; }
 QFrame#card { background: #19212c; border: 1px solid #2c3745; border-radius: 6px; }
 QFrame#card QWidget { background: transparent; }
 QPushButton { background: #243140; border: 1px solid #3a4a5c; border-radius: 6px;
