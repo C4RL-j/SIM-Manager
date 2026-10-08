@@ -4,7 +4,7 @@ The repository root is `C:\PROJECTs\SIM-manager_workspace\sim-manager`. Run proj
 
 The legacy tree is read-only reference material. Copy approved reusable code into `src/sim_manager/`; never import from the legacy tree at runtime. Compare before/after file lists and SHA-256 hashes when verifying that legacy files remain unchanged.
 
-Read `AGENTS.md`, the relevant docs, and the active plan before changing code. Implement only the approved task. Tasks 001–004 completed the transport foundation and scoped read-only hardware/firmware telemetry discovery. Production detection, message normalization, carrier/account features, GUI work, and Task 005 remain deferred; discovery completion does not authorize that future implementation.
+Read `AGENTS.md`, the relevant docs, and the active plan before changing code. Implement only the approved task. Tasks 001–005 completed the transport foundation, scoped read-only hardware/firmware discovery, and carrier-neutral device-state models/normalization with an authentication-isolated status client. Message normalization, carrier mapping/account features, GUI/storage work, and Task 006 remain deferred.
 
 ## Offline transport tests
 
@@ -36,7 +36,7 @@ Task 004 verification passed 190 Python tests in 0.974 seconds and 36 Node tests
 
 Run the relevant offline suite, review `git diff` and `git status`, and verify the legacy hashes before reporting completion. Include newly created files in the review; ordinary `git diff` does not show untracked file contents. Do not commit unless explicitly requested.
 
-Diagnostic logs and exception output must mask or omit full phone numbers/MSISDNs, IMSIs, ICCIDs, OTPs, sensitive SMS bodies, authentication cookies, tokens, and passwords. Do not retain real messages, account data, or credentials in tests or fixtures.
+Diagnostic logs and exception output must mask or omit full phone numbers/MSISDNs, IMSIs, ICCIDs, IMEIs, IP/DNS addresses, APNs, OTPs, sensitive SMS bodies, authentication cookies, Authorization values, tokens, and passwords. Do not retain real messages, account data, or credentials in tests or fixtures. Device-state repr/str must omit all fields; explicit serialization needs its own privacy review.
 
 ## Task 003 hardware discovery
 
@@ -62,6 +62,16 @@ The browser probe accepts only its fixed local router origins, rejects redirects
 
 Task 004's received report has seven HTTP/body-code-200 object responses and 49 typed fields. It verifies raw Ready/Connected/LTE labels, band/signal strings, and identifier field presence/types. Masks hide empty strings as well as populated ones; do not claim valid/non-empty identifiers or cellular addresses. PCI and PIN-retry values remain omitted strings. `wirelessinfo` exported no allowlisted fields, which does not prove empty raw data. Actual operator/PLMN, registration/roaming, APN/PDP, radio units, modem firmware revision, absent/locked SIM states, and other firmware variants remain unverified. Only two endpoints were separately checked unauthenticated and returned 401; the other five used the session without isolated authentication-requirement tests. GET-only `state_changes_requested=false` records requested operations, not an audit of firmware-internal side effects.
 
-Run all existing offline tests plus new parser/discovery tests. Verify legacy hashes, unchanged production transport behavior, no router setting changes, no tracked sensitive captures, and passing diff/whitespace checks. Task 005 must remain unstarted.
+Task 004 verification ran all offline tests plus its new parser/discovery tests, verified legacy hashes and unchanged production transport behavior, and checked for router-setting requests, tracked captures, and diff/whitespace. Task 005 was unstarted at that historical verification point.
 
 Update the active plan with results and limitations. Keep the foundation plan under `plans/active/` while later foundation tasks remain outstanding; finishing Task 004 does not finish the whole plan.
+
+## Task 005 normalized device state
+
+Work only in the Device and carrier-neutral model boundary. Keep raw D2 response objects inside the parser/client. Use the sanitized Task 004 report as observed-shape evidence; reconstruct hidden values only from explicitly synthetic data. Do not invent units, carrier identity, registration/roaming, SIM presence/locked states, or valid/non-empty identifiers from masked field types. Document VERIFIED RAW VALUE, NORMALIZED REPRESENTATION, and INFERRED/UNKNOWN SEMANTICS separately.
+
+The status client requires an explicitly injected authenticated-session implementation for retrieval. The production package has no Brave bridge and must not import the development browser probe, extract Authorization material, prompt for/store credentials, or open hardware by default. A missing session returns authentication-required unknown state without I/O. An injected session must honor the shared monotonic deadline, cooperative cancellation, and per-response cap; tests use fake sessions and controlled time, not the browser/router.
+
+Verify optional/missing/null/empty/malformed/future fields, band/signal mapping, Ready/LTE/Connected labels, partial endpoint failures, neutral unknown carrier evidence, availability without identifier/address storage, opaque repr/log output, and safe closed error codes. Run both full offline suites, retain all prior transport tests, compare legacy/transport/fixture hashes, and review tracked/untracked diffs and privacy.
+
+Task 005 verification passed **260 Python tests** in 1.888 seconds on Python 3.13.15 with `PYTHONPATH=src` and `python -S -B -m unittest discover -s tests -v`: 190 unchanged prior tests, 31 parser/model cases, and 39 client cases. The unchanged JavaScript suite passed **36 tests** in 688.2856 ms; `node --check tools/d2_browser_probe.js` passed. Tests verify response-limit contract forwarding, not independent raw HTTP cap enforcement. All 40 legacy paths/hashes and 19 pre-existing non-document project files match the Task 005 baseline, including the SMS transport, original transport tests, development tools/tests/fixtures, package initializers/metadata, and ignore rules. No new hardware/browser access or router-setting changes occurred. Syntax, privacy, and tracked/untracked diff/whitespace checks passed; no real identifier or credential values were introduced. On `main`, six documentation files are modified and five new source/test files are untracked; the normal index is unstaged, and no Task 005 commit was made. Task 005 is complete within its boundary scope; the authenticated-session implementation remains future work. Task 006 is unstarted, and the foundation plan stays active.

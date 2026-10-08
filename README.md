@@ -1,10 +1,10 @@
 # SIM Manager
 
-A lightweight Windows SIM management application in development. Tasks 001–004 are complete within their approved scopes: the Python package and D2 SMS transport have offline characterization and reliability coverage, and read-only hardware/firmware discovery has an evidence report and manual development probes. Seven firmware-evidenced telemetry GETs were verified through a sanitized report from the user's authenticated Brave session. Python 3.11 or newer is required. Task 005 has not begun.
+A lightweight Windows SIM management application in development. Tasks 001–005 are complete within their approved scopes. The package includes carrier-neutral device-state models, normalization of the seven firmware-evidenced telemetry GETs, and one status snapshot client with isolated authentication. Python 3.11 or newer is required. Task 006 has not begun.
 
 ## Current scope
 
-The only device implementation is `sim_manager.devices.d2.router`, originally copied from the read-only legacy reference at `../old/D2-desktop/router.py`. It uses the existing Telnet/UBus inbox path. The default `192.168.1.1:2323` endpoint, three-record read, exact UBus command, and fixed historical marker remain unchanged.
+The D2 SMS transport is `sim_manager.devices.d2.router`, originally copied from the read-only legacy reference at `../old/D2-desktop/router.py`. It uses the existing Telnet/UBus inbox path. The default `192.168.1.1:2323` endpoint, three-record read, exact UBus command, and fixed historical marker remain unchanged.
 
 The transport now preserves Telnet state across reads, recognizes a terminated standalone completion-marker line with command echo enabled or disabled, bounds raw received bytes, uses monotonic deadlines, supports cooperative cancellation, and emits generic errors without raw exception chains. Marker text inside command echoes or JSON strings cannot complete a read. Response processing stops at the marker line; trailing JSON or Telnet bytes in the same receive are ignored.
 
@@ -12,22 +12,31 @@ The transport now preserves Telnet state across reads, recognizes a terminated s
 
 SMS envelopes remain raw. Stringified or otherwise loosely shaped `data` is preserved, and the last successful outer envelope can still win over a later error envelope. Response selection prevents nested SMS objects from overriding valid or malformed outer envelopes. Transparent-wrapper fallback remains when no top-level envelope exists; traversal stops at any dictionary containing both `code` and `msg`, including error envelopes. The public JSON extraction helper still enumerates nested objects. Message normalization and stronger payload-schema validation are deferred.
 
-The production package includes no GUI, carrier account integration, or SIM/signal/carrier detection. Importing it does not connect to a router. No runtime dependencies or browser packages are required. A separate manual development probe supports Task 003/004 discovery; it never runs at application startup.
+Task 005 adds the normalized Device boundary: immutable SIM, network, radio, WAN, carrier-evidence, snapshot, and partial-error models; a D2 parser; and one aggregate `get_device_state()` client. Known fields remain optional, and a failed endpoint must not discard available data. Band `1/28` becomes `(1, 28)` without carrier-aggregation meaning. Signal fields use unit-neutral names with `units_verified=False`. Identifiers/addresses are represented by availability rather than full values; model repr/str omits all details. Carrier evidence remains unknown.
+
+Authentication is an injected session contract, separate from the models/parser and SMS transport. No production Python bridge to the existing Brave session is available. The default `D2StatusClient().get_device_state()` returns authentication-required unknown state and performs no I/O; it never copies browser Authorization values. An injected session must honor the shared monotonic deadline (default 20 seconds), cancellation, 256 KiB response limit, TLS verification, redirect rejection, and connection cleanup. The client cannot preempt arbitrary injected code that ignores that contract.
+
+The package includes no GUI, storage/account integration, or carrier mapping. Importing it does not connect to a router. No runtime dependencies or browser packages are required. Manual development probes remain separate from runtime and never run at application startup.
 
 ```text
 src/sim_manager/
 ├── __init__.py
+├── models.py
 └── devices/
     ├── __init__.py
     └── d2/
         ├── __init__.py
-        └── router.py
+        ├── router.py
+        ├── status.py                 # Task 005 status client
+        └── status_parser.py          # Task 005 normalization
 tests/
 ├── test_d2_discovery.py
 ├── test_d2_discovery_sources.py
 ├── test_d2_source_evidence.py
 ├── test_d2_router.py
 ├── test_d2_router_reliability.py
+├── test_d2_status_parser.py
+├── test_d2_status_client.py
 ├── test_d2_browser_probe.js          # separate Node development-probe tests
 └── fixtures/d2/                     # sanitized observations/synthetic source
 tools/
@@ -57,6 +66,8 @@ No npm packages are required. The Python standard-library suite remains independ
 
 Task 004 verification passed 190 Python tests and 36 Node tests, including the supplied sanitized authenticated-report fixture. The development source summaries were intentionally tightened to omit arbitrary dotted string values; production transport behavior and all 78 original transport tests remain unchanged.
 
+Task 005 verification passed **260 Python tests** (190 prior tests plus 31 parser/model and 39 client cases) and **36 Node tests**. All 78 prior SMS transport tests, production SMS transport, development tools/tests/fixtures, and 40 legacy files remain unchanged. No live-router/browser access occurred in Task 005. Syntax, privacy, and tracked/untracked diff/whitespace checks passed.
+
 ## Transport assumptions
 
 The supported path requires an already available direct Telnet shell and the existing `cped` UBus SMS command. Login prompts are rejected; the transport does not enable a shell, authenticate, or discover router/modem capabilities. Task 003 confirmed the default direct shell and standalone-line framing for read-only discovery queries. It did not read SMS, validate the historical SMS marker or payload forms on hardware, or test other firmware versions.
@@ -77,7 +88,7 @@ python -S -B tools/d2_discovery.py --list-queries
 
 An explicit `--query` invocation contacts the router. The development tool permits only reviewed read-only queries, uses bounded timeouts/output, and supports Ctrl+C. Normal output omits unknown values and sensitive identifiers. It does not change router settings, invoke guessed vendor/AT commands, or build production detection logic.
 
-Task 004 inspected firmware/web assets first, then verified only getters evidenced by the router's own admin interface. Future status-page discovery may use an existing legitimate router session; passwords, cookies, and tokens must not be logged or stored in the repository. Configuration controls and requests with uncertain side effects remain out of scope. Any observed PLMN/operator values remain neutral evidence; carrier mapping and Task 005 are deferred.
+Task 004 inspected firmware/web assets first, then verified only getters evidenced by the router's own admin interface. Future status-page discovery may use an existing legitimate router session; passwords, cookies, and tokens must not be logged or stored in the repository. Configuration controls and requests with uncertain side effects remain out of scope. Any observed PLMN/operator values remain neutral evidence; carrier mapping and Task 006 are deferred.
 
 For a legitimate signed-in Brave router tab, print the fixed browser probe offline:
 
@@ -89,7 +100,7 @@ Manual execution in that tab's DevTools Console sends only seven firmware-eviden
 
 Only a sanitized summary should be shared. Identifier/address/APN/cell values are masked; arbitrary operator/model/version text and unknown values are omitted. Narrow status enums, bands, signal values, and neutral PLMN digit strings may be retained without carrier interpretation. The user manually ran the probe inside the signed-in Brave tab because this environment had no browser connector or exposed remote-debugging port/pipe. All seven GETs returned HTTP/body code 200 with object data, without exporting authorization material.
 
-The report verifies raw `Ready`/`READY`, `Connected`, and `LTE` labels, band string `1/28`, signal strings, and masked identifier field types. Masks hide even empty strings, so identifier contents/validity and cellular address assignment are unknown. Radio units, registration/roaming, actual operator/PLMN, APN/PDP, modem firmware revision, absent/PIN-locked SIM states, and other firmware variants remain unverified. `wirelessinfo` exported no allowlisted fields; that does not prove empty raw data. No production telemetry API or carrier mapping was added.
+The report verifies raw `Ready`/`READY`, `Connected`, and `LTE` labels, band string `1/28`, signal strings, and masked identifier field types. Masks hide even empty strings, so identifier contents/validity and cellular address assignment are unknown. Radio units, registration/roaming, actual operator/PLMN, APN/PDP, modem firmware revision, absent/PIN-locked SIM states, and other firmware variants remain unverified. `wirelessinfo` exported no allowlisted fields; that does not prove empty raw data. Task 005 normalizes this evidence without adding carrier mapping or claiming broader hardware validation.
 
 Raw responses are transient unless `--capture-raw` is explicitly requested. That flag saves sensitive data only under the ignored `artifacts/d2-private/` directory; never commit or paste those captures into documentation. It was not used for hardware in Tasks 003/004. See the [D2 hardware capability report](docs/devices/D2-HARDWARE-CAPABILITIES.md) for historical shell queries, firmware provenance, the authenticated GET ledger, and field statuses. Only GET/read operations were requested; firmware-internal side effects were not audited.
 

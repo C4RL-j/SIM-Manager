@@ -4,7 +4,7 @@ Date: 2026-10-07 (Asia/Irkutsk)
 
 Updated: 2026-10-08 (Asia/Irkutsk)
 
-Status: Tasks 003/004 discovery complete within their observational scopes; Task 005 has not begun
+Status: Tasks 003/004 discovery and Task 005 normalized device-state boundary complete within their approved scopes; Task 006 has not begun
 
 This report records read-only observations from the router identified by the user as a Smart Bro Home WiFi D2. It is discovery evidence, not a production device API or a carrier-detection implementation. Model, module, SIM, and cellular identity must be established from actual responses rather than the router's branding.
 
@@ -214,7 +214,7 @@ HTTP 401
 {"code": <integer>, "msg": <string omitted>}
 ```
 
-Only the fields recorded in the authenticated ledger below are now runtime observations; other source-only keys remain unverified. No PLMN/carrier mapping, production detection, router-setting write, or Task 005 work has begun.
+Only the fields recorded in the authenticated ledger below are runtime observations; other source-only keys remain unverified. At Task 004 completion, no PLMN/carrier mapping, production detection, router-setting write, or Task 005 work had begun.
 
 ### Manual signed-in-browser probe (authenticated report received)
 
@@ -271,7 +271,7 @@ The mask replaces even an empty string. Consequently identifier/address field pr
 | Modem firmware revision | UNTESTED / not established | Software/router-version references are not proof of modem firmware. Exact version strings omitted. |
 | Model/hardware/software/bootloader fields | VERIFIED string fields | T4-A04/A07; actual values omitted. Task 003 USB model evidence remains independently verified. |
 
-Task 004 is complete within its discovery scope: seven source-evidenced getters and sanitized authenticated shapes are established, with limitations explicit. Production detection/carrier logic and Task 005 remain unstarted.
+Task 004 is complete within its discovery scope: seven source-evidenced getters and sanitized authenticated shapes are established, with limitations explicit. At Task 004 completion, production detection/carrier logic and Task 005 were unstarted. The separately approved normalization work is recorded below.
 
 ### Development-summary privacy correction
 
@@ -285,7 +285,51 @@ Task 004 intentionally tightens earlier development summaries. Component-vocabul
 - All 40 legacy file paths/SHA-256 hashes, production package files, both original transport test modules, and `pyproject.toml` match the Task 004 baseline. No hardware raw-capture flag was used or sensitive capture tracked.
 - Git is on `main`, with no staged changes or Task 004 commit. Aggregate Task 003/004 status is six modified files and twelve untracked files; Task 004 relative to its starting snapshot changes eight files and adds nine files. Diff review and `git diff --check` pass; all twelve untracked files also pass read-only `git diff --no-index --check` against `NUL`. The normal Git index was not changed.
 
-Source investigation, authenticated discovery, and offline verification are complete with the retained limits above. Task 005 has not begun; the foundation plan remains active for deferred work.
+Source investigation, authenticated discovery, and offline verification are complete with the retained limits above. These Task 004 results are historical; Task 005 has separate implementation/verification records below. The foundation plan remains active for deferred work.
+
+## Task 005 — normalized production device boundary
+
+Task 005 completed immutable carrier-neutral models, D2 response normalization, and an authentication-isolated aggregate status client. No additional hardware query, operator-value disclosure, or firmware observation was needed. The raw evidence in T4-A01–A07 remains unchanged. Normalization is software representation, not new verification of units, identity, registration, or firmware variations.
+
+`sim_manager.models` provides `SimState`, `NetworkState`, `RadioState`, `WanState`, `CarrierEvidence`, `DeviceIssue`, and `DeviceState`. Models are frozen and use closed status/issue enums with optional values. Repr/str omits all fields even if a caller accidentally passes private text into a wrongly typed argument. The D2 parser stores no full SIM/device identifiers, addresses, DNS, credentials, SMS, or OTP values. Availability can describe non-empty reported text without asserting validity; raw payloads must not be logged or retained alongside snapshots.
+
+### Verified raw values, normalized representations, and unknown semantics
+
+The parser accepts actual parsed JSON endpoint envelopes, not the browser probe's sanitized summary format. Offline observed-shape fixtures reconstruct the seven envelopes using the provided report's allowed strings/placeholders; any hidden values used for privacy tests are explicitly synthetic. A provided endpoint must contain integer `code=200` and object `data`; an invalid supplied envelope creates a fixed-source malformed-response issue. An absent endpoint is incomplete retrieval rather than a fabricated malformed response.
+
+| Verified raw evidence | Normalized representation | INFERRED/UNKNOWN semantics retained |
+| --- | --- | --- |
+| T4-A06 `data.SIMCardState="READY"`; T4-A04/A05 `USIMStatus="Ready"` | `sim.readiness=READY`; canonical SIM-card state takes precedence, then dashboard device/WAN fallback when missing/null/empty. | `sim.present=None`, `pin_state=UNKNOWN`; absent/PIN-locked/PUK states not observed. A populated unfamiliar canonical state blocks fallback to a stale Ready label. |
+| T4-A06 `PINCheckEnabled="OFF"` | `sim.pin_check_enabled=False`. | Other labels and retry string semantics unverified; no PIN operation. |
+| T4-A04 `UICCID`/`IMSI`, T4-A07 `MSISDN` are masked strings | Identifier availability only; Task 004 masked placeholders normalize to `UNKNOWN`. | Exact value, non-empty state, validity, and SIM correspondence remain unknown. Actual non-empty reported text can become `AVAILABLE`; empty text `UNAVAILABLE`; neither stores the value. |
+| T4-A05 `ConnectionStatus.ConnectMode="LTE"` | `network.connection_mode=LTE`. | No registration/roaming/5G/fallback interpretation; the separate T4-A03 `ConnectMethod="GSM"` label is not mapped. |
+| T4-A05 `ConnectionStatus.ConnectStatus="Connected"`, T4-A02 `Status="Connected"` | `network.connection` and `wan.connection=CONNECTED`; canonical WAN status precedes Internet fallback when missing/null/empty. | Connected does not prove EPS registration or Internet health. A populated unfamiliar canonical state blocks stale fallback. Defensive `Disconnected` handling is not a newly observed hardware state. |
+| T4-A02/A05 `Band="1/28"` | `radio.bands=(1, 28)`, preserving reported order. | No carrier aggregation, primary/secondary assignment, or supported-band claim. |
+| T4-A05 `RSRP0="-91"`, `RSRP1="-96"`; T4-A02 `RSRP="-91"` | `radio.rsrp=-91.0`, `secondary_rsrp=-96.0`; valid WAN value before valid Internet fallback. | `units_verified=False`; no dBm claim, antenna assignment, calibration, or measurement validity. |
+| T4-A02/A05 `RSRQ="-9"`, `SINR="22"`; T4-A05 `RSSI="-82"` | Optional finite numeric `rsrq=-9.0`, `sinr=22.0`, `rssi=-82.0`; individual invalid/missing values stay unknown. | No dB/dBm/scale assumption. Partial signal availability does not invalidate the radio state. |
+| T4-A05 `PCI` is a string with value omitted | Optional `radio.pci`; the observed omitted placeholder stays `None`. | Defensive integer/numeric-string acceptance is parser behavior, not an observed PCI value or range interpretation. `earfcn=None` without a verified telemetry path. |
+| T4-A03 `IpAddress` is a masked string | `wan.address_availability=UNKNOWN` for the fixture; actual non-empty/empty text may describe availability without retaining addresses. | IP family, cellular assignment, DNS provenance, APN, and PDP remain unknown/unset. |
+| T4-A02 `Operator` string omitted; no PLMN/MCC/MNC exported | `network.operator=None`; empty `CarrierEvidence(operator=None, plmn=None, mcc=None, mnc=None)`. | Carrier identity remains UNKNOWN. No router-brand/model/MAC/SSID inference or DITO/Smart mapping. |
+
+Band and signal values choose the first valid value per field from nested WAN status, then Internet where an evidenced counterpart exists. Numeric syntax/size bounds are defensive parser choices, not proven radio-domain ranges. Invalid/missing optional fields do not invalidate a successful endpoint. Unknown future fields and issue inputs outside the fixed source/closed-code set are ignored. `successful_sources` uses the fixed seven-source order. Snapshot `partial` describes retrieval completeness/errors, not whether every optional field is known; all seven successful envelopes may yield `partial=False` with carrier/units/identifiers still unknown. Default UTC observation time is local snapshot metadata, not a router measurement timestamp or freshness guarantee; fixed source metadata accompanies it.
+
+### Authentication and aggregation limit
+
+The production `D2StatusClient.get_device_state(timeout=20.0, stop_event=None)` exposes one snapshot over the same seven GET paths documented above. It accepts an explicitly injected `AuthenticatedStatusSession.read_json()` implementation returning an opaque `StatusResponse(http_status, payload)` within the device boundary; raw payloads are not returned to services/UI. Authentication remains isolated from parser/models and the future UI. No production Python bridge to the existing Brave tab has been implemented. With no session, the client returns an authentication-required unknown snapshot without opening sockets, browsers, or development probes. It accepts no credentials/Authorization/header parameter and stores no token.
+
+An injected session is responsible for legitimate authentication, TLS verification, rejecting redirects, connection cleanup, and honoring the shared monotonic deadline, cooperative cancellation, and 256 KiB per-response contract. The client receives parsed JSON and forwards `max_bytes`; it cannot independently count raw HTTP bytes or enforce that cap. Tests verify contract forwarding, not a nonexistent HTTP implementation. The client cannot preempt arbitrary injected code that ignores that contract. Authentication failure stops further requests; cancellation/deadline expiry discards late responses while retaining earlier successful data. Other endpoint failures are isolated and reported through fixed source keys and closed issue codes, without raw exception messages, response bodies, or chains. Partial successful data remains usable. No further runtime/hardware compatibility claim follows from fake-session tests.
+
+### Task 005 verification record
+
+- Python 3.13.15, `PYTHONPATH=src`, `python -S -B -m unittest discover -s tests -v`: **260 tests passed**, zero failures/errors, in 1.888 seconds. This retains all 190 prior tests, including 78 SMS transport cases, and adds 31 parser/model plus 39 client cases.
+- `node --test tests/test_d2_browser_probe.js`: **36 tests passed** in 688.2856 ms. `node --check tools/d2_browser_probe.js` also passed. No development-browser tool/test/fixture changes were needed.
+- Fake sessions and sanitized/synthetic values cover observed mappings, field/envelope failures, canonical-state precedence, optional unknowns, availability, opaque repr/logging, unknown carrier evidence, no-session inertness, shared deadlines/cancellation/late-response handling, authentication stops, and the forwarded byte-limit contract. Tests do not implement/enforce a raw HTTP body limit or establish new hardware behavior.
+- Five files were added: `src/sim_manager/models.py`, `src/sim_manager/devices/d2/status_parser.py`, `src/sim_manager/devices/d2/status.py`, `tests/test_d2_status_parser.py`, and `tests/test_d2_status_client.py`. Six documentation files were updated: `AGENTS.md`, `README.md`, `docs/ARCHITECTURE.md`, `docs/WORKFLOW.md`, this report, and the active foundation plan.
+- All 40 legacy paths/SHA-256 hashes and 19 pre-existing non-document project files match the Task 005 baseline, including the SMS transport/original tests, development tools/tests/fixtures, package initializers/metadata, and ignore rules. No new router/browser access or setting-changing operation occurred. No `artifacts/d2-private/` directory or tracked capture exists, and its ignore rule is effective.
+- All five new Python files parse successfully. Code/test privacy review found no real identifier or credential values; long digit test inputs are reviewed synthetic malformed-PCI vectors. Model/response/client repr and logs remain opaque in tests. `git diff --check` passes, and each of the five untracked files passes read-only `git diff --no-index --check` against `NUL`.
+- Git is on `main` with six modified documentation files and five untracked source/test files. The normal index remains unstaged; no Task 005 commit was created. Historical Task 004 Git counts above describe its earlier verification point, not the current tree.
+
+Task 005 is complete within its approved device-boundary scope with authentication and semantic limits explicit. No carrier mapping, GUI/storage/account integration, or Task 006 work was implemented. The foundation plan remains active for deferred work.
 
 ## Development probe and privacy boundary
 
@@ -299,7 +343,7 @@ The E18 binding query assumes at most one default route per address family, matc
 
 ## Recommended future abstractions and validation
 
-Keep device identity, SIM state/identity, cellular registration/operator, radio measurements, WAN connectivity, and modem identity as separate neutral results. Preserve raw observed codes/units and explicit unknowns until their interpretation is verified. This is a recommendation only; no production models or parsers are implemented here.
+Keep device identity, SIM state/identity, cellular registration/operator, radio measurements, WAN connectivity, and modem identity as separate neutral results. Preserve observed labels and explicit unknown units/semantics until their interpretation is verified. Task 005 established the production model/parser boundary described above; expanded hardware validation remains separate future work.
 
 Future work must continue establishing firmware evidence before new queries and preserve paths/types, masked shapes, units, missing fields, and firmware assumptions. Task 004 located the separate Vue application's seven GET requests and received sanitized authenticated shapes. Units, unknown/omitted fields, SIM-state variations, registration/roaming, modem revision, and other firmware versions need separately scoped validation. A term occurrence alone never permits execution. Do not guess AT commands or UBus strings, or switch state/configuration under this observational scope.
 
@@ -313,4 +357,4 @@ Verified on Python 3.13.15 from `sim-manager/` with `PYTHONPATH=src`:
 - `git diff --check` passes, including the three new files reviewed through a temporary index. The normal index remains unstaged. On `main`, Task 003 has six modified files and three new files; no Task 003 commit was created.
 - No hardware raw-capture flag was used, no hardware captures were retained, and no files under `artifacts/d2-private/` are tracked. The explicit ignore rule is effective; capture tests use temporary synthetic data only.
 
-The Task 003 observational task is complete with its original unresolved fields recorded explicitly. Its 139-test result is historical; Task 004's later authenticated observations and final verification record are separate above. Task 005 has not begun.
+The Task 003 observational task is complete with its original unresolved fields recorded explicitly. Its 139-test result is historical; Task 004's later authenticated observations and final verification record are separate above. Task 005 was unstarted at that historical verification point and now has its own section.

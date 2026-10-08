@@ -4,9 +4,9 @@ Date: 2026-10-07
 
 Updated: 2026-10-08 (Asia/Irkutsk)
 
-Status: Audit complete; Tasks 001–004 complete within their approved scopes; Task 005 and later not started
+Status: Audit complete; Tasks 001–005 complete within their approved scopes; Task 006 and later not started
 
-Scope: Historical audit and transport foundation, read-only D2 hardware/telemetry discovery, and future migration plan
+Scope: Historical audit, transport foundation, read-only D2 hardware/telemetry discovery, normalized device state, and future migration plan
 
 ## Decision
 
@@ -16,9 +16,11 @@ Keep the existing Python D2 Telnet/UBus SMS transport as the migration starting 
 
 Task 002 completed narrow D2 transport hardening with offline regression tests. It changed the new copy after characterization while preserving the working UBus wire command. It did not implement SMS normalization, carrier/account features, hardware probing, SIM/network/signal detection, GUI work, or Task 003.
 
-Task 003 completed observational D2 hardware discovery with a manually invoked development probe and a capability report. Read-only safety was established before each fixed query was executed. Production detection/normalization, carrier/account integration, and GUI work remain unstarted. Never alter router configuration or guess AT/vendor commands.
+Task 003 completed observational D2 hardware discovery with a manually invoked development probe and a capability report. Read-only safety was established before each fixed query was executed. At its completion, production detection/normalization, carrier/account integration, and GUI work were unstarted. Never alter router configuration or guess AT/vendor commands.
 
-Task 004 completed discovery of read-only cellular telemetry used by the firmware/admin UI. Source inspection established seven GETs; the user returned a sanitized authenticated report from the legitimate Brave session. Raw labels and field types are verified within the report's privacy limits; units, broader state meanings, carrier identity, and modem firmware revision remain unverified. No production/carrier logic or Task 005 work is authorized.
+Task 004 completed discovery of read-only cellular telemetry used by the firmware/admin UI. Source inspection established seven GETs; the user returned a sanitized authenticated report from the legitimate Brave session. Raw labels and field types are verified within the report's privacy limits; units, broader state meanings, carrier identity, and modem firmware revision remain unverified. Its discovery scope did not authorize production/carrier logic.
+
+Task 005 completed the Device and normalized model boundary only: immutable carrier-neutral state models, defensive D2 response normalization, and one read-only status snapshot client over the seven verified endpoints. Authentication remains an explicit injected session boundary: without a session, the client returns unknown/authentication-required state with no I/O. No Brave bridge, credential transfer, carrier mapping, GUI/storage/account feature, or Task 006 work was implemented.
 
 The new application repository is `C:\PROJECTs\SIM-manager_workspace\sim-manager`. Git must be initialized inside `sim-manager/` only, never at the workspace root. `../old/D2-desktop/` must never be added to the new repository. Preserve the legacy tree and verify its file list and SHA-256 hashes before/after extraction.
 
@@ -288,7 +290,7 @@ Masking also replaces empty strings, so identifier/address validity, non-empty s
 
 Task 004 also intentionally tightens the development-summary privacy boundary. Earlier component-word matching could print arbitrary quoted values that happened to resemble an allowed dotted name. Those summaries/status-name searches now report only the exact reviewed operation `sms.get.inboxdata`; a strict source helper supplies reviewed endpoint/property metadata without literal values. Two earlier development-summary expectations were updated and a privacy regression added. Production transport and all 78 original transport tests are unchanged.
 
-The browser probe performs only the seven allowlisted same-origin GETs in the existing legitimate signed-in tab. It keeps authorization inside that origin, requests no browser-storage/configuration writes, rejects redirects, uses a 20-second total deadline and 256 KiB response limits, and supports explicit cancellation. Brave had no accessible connector or exposed remote-debugging port/pipe, so the user manually executed the probe and supplied only its sanitized report. `state_changes_requested=false` records GET-only requested operations; firmware-internal counter/log side effects were not audited. No raw capture or credential export occurred. Task 005 has not begun.
+The browser probe performs only the seven allowlisted same-origin GETs in the existing legitimate signed-in tab. It keeps authorization inside that origin, requests no browser-storage/configuration writes, rejects redirects, uses a 20-second total deadline and 256 KiB response limits, and supports explicit cancellation. Brave had no accessible connector or exposed remote-debugging port/pipe, so the user manually executed the probe and supplied only its sanitized report. `state_changes_requested=false` records GET-only requested operations; firmware-internal counter/log side effects were not audited. No raw capture or credential export occurred. Task 005 was unstarted at Task 004 completion.
 
 ### Deferred DITO core services — future scope only
 
@@ -296,15 +298,29 @@ The following earlier proposal is not the approved Task 004. It remains unassign
 
 Add DITO recognition from verified device evidence and a carrier adapter with explicit unknown/unsupported states. Move the existing DITO OTP rule into that adapter over normalized messages. Shared OTP watcher services must accept a carrier-provided matcher/predicate rather than importing DITO OTP logic directly. Recover or implement the missing polling service with injected clock/fetcher, baseline/new-message handling, freshness, bounded retry, cancellation, and SIM-change reset. Port reviewed OTP/watcher tests and add missing ordering/malformed/time-zone cases. No MyDITO automation or Smart account features are needed for Phase 1.
 
-### Task 005 — local storage and minimal neutral UI
+### Task 005 — carrier-neutral device state and D2 status client
 
-**Future proposal; not started or authorized by Task 004.**
+**Complete within approved Device and normalized model scope.** Preserve Device → Carrier → Services → UI. Immutable SIM, network, radio, WAN, carrier-evidence, snapshot, and closed partial-error models now live under `src/sim_manager/`. D2-specific normalization and a single `get_device_state()` snapshot API keep raw endpoint objects inside the device boundary; future UI code must not fetch seven requests independently. The SMS transport and development tools remain separate unchanged paths.
+
+Use only Tasks 003–004 evidence. Normalize reported bands `"1/28"` to `(1, 28)` without aggregation/primary-band meaning. Parse finite signal strings into optional numeric fields with unit-neutral names and `units_verified=False`; do not assert dBm/dB, antenna meaning, or measurement validity. Map the observed `Ready`/`READY`, `LTE`, `Connected`, and `PINCheckEnabled="OFF"` labels. Both observed Ready capitalizations are accepted across the verified state paths; defensive handling of literal `Disconnected` is not a new hardware observation. Keep explicit SIM presence, PIN-required state, registration, roaming, operator, PLMN/MCC/MNC, APN/PDP/IP family, EARFCN, and modem firmware revision unknown when not verified. PCI has a verified string field but an omitted value; defensive numeric parsing is not new hardware evidence.
+
+Store identifier/address availability rather than full ICCID/IMSI/MSISDN/IMEI/IP/DNS values. Non-empty reported text can establish availability without establishing validity; missing/null/masked/omitted placeholders remain unknown, while an explicitly empty string can establish unavailable reported content. Model repr/str and safe issue output must omit all fields, including accidentally wrong-typed constructor arguments. Optional future operator/APN fields must not leak through diagnostics; the D2 parser leaves them unset without verified values. CarrierEvidence remains empty/UNKNOWN; never map branding, model, MAC, SSID, or unobserved operator/PLMN to a carrier.
+
+The D2 status client uses only the fixed seven evidenced GET endpoints via the injected `AuthenticatedStatusSession.read_json()` protocol and private-boundary `StatusResponse(http_status, payload)`. The session owns legitimate authentication, TLS verification, redirect rejection, response limits, and connection cleanup; production code accepts no credential/token/header parameter and stores no Authorization value. No production Python bridge to the existing Brave session exists yet. The default missing-session path returns authentication-required unknown state without network/browser access. An explicitly injected implementation must honor one shared monotonic deadline (default 20 seconds), cooperative cancellation, and the 256 KiB per-response limit; the client cannot preempt arbitrary injected code that ignores that contract. Authentication failure stops subsequent reads. Cancellation/deadline expiry discards the late response while retaining earlier successes. Normalization and endpoint failures remain isolated so available data survives with fixed-source, closed-code partial errors and UTC/source metadata.
+
+Test the sanitized Task 004 report, band/signal/SIM/LTE mappings, missing/null/empty/malformed/unknown values, partial endpoint failures, privacy-safe repr/logging, unknown carrier evidence, cancellation/deadline behavior, response-limit contract forwarding, and no-session inertness without hardware. No raw HTTP byte-limit enforcement is implemented or independently tested by a client receiving parsed JSON; that belongs to the future session implementation. Run both full offline suites; verify unchanged legacy paths/hashes, SMS transport and original tests, no tracked secrets/captures, and diff/whitespace. Optional safe operator verification is not needed for this task; no further hardware or probe changes are planned. Record final results below only after verification. No GUI, carrier login/account work, or Task 006 is authorized.
+
+### Deferred local storage and minimal neutral UI — future scope only
+
+The earlier Task 005 proposal below is not the approved Task 005. It remains unassigned future work and is not authorized by the device-state task.
 
 Reuse atomic settings persistence with a single canonical saved-account schema and `%LOCALAPPDATA%/SIM Manager` paths. Preserve old app-data files; any future import must be explicit, validate input, resolve deletion/selection semantics, and never carry over authentication material or an unbound global account cache. Keep detected SIM identity separate from user-entered account numbers.
 
 Build a local shell and the smallest device/messages/status presentation needed to exercise DITO core. Reuse useful cards/formatters but remove hardcoded availability and MyDITO-specific presentation decisions. The UI routes I/O through services; device, carrier, and storage adapters own their respective I/O. Device/status errors must leave the application usable. Complete the Data/Overview/Messages/Settings experience according to roadmap Phase 3; a minimal earlier shell is only for validating the Phase 1 path.
 
 ### Task 006 — authenticated MyDITO adapter and account views
+
+**Future proposal; not started or authorized by Task 005.**
 
 Proceed with roadmap Phase 2 after the device/services path works. Reuse selected existing browser scripts and account parsers inside the DITO integration. Use an official user-authenticated browser surface isolated from local app data, with trusted-origin checks, manual fallback, and no security bypass. Investigate actual session lifetime, endpoints/DOM behavior, and challenges rather than treating legacy guesses as facts.
 
@@ -395,10 +411,24 @@ Offline verification and scoped authenticated discovery complete:
 
 Task 004 is complete within its observational scope. Raw labels/typed fields are established; masked identifier content, omitted operator/PCI/retry values, units, status semantics, unavailable-field conclusions, modem firmware revision, absent/locked SIM states, and firmware variations remain explicitly unverified. No production telemetry/carrier implementation or Task 005 work occurred. This plan stays active for deferred foundation work.
 
+### Task 005 verification
+
+Verified offline on Python 3.13.15 from `sim-manager/` with `PYTHONPATH=src`:
+
+- `python -S -B -m unittest discover -s tests -v`: **260 tests passed**, zero failures/errors, in 1.888 seconds. All 190 prior tests, including 78 original SMS transport cases, remain unchanged; 31 parser/model and 39 client cases were added.
+- `node --test tests/test_d2_browser_probe.js`: **36 tests passed** in 688.2856 ms; `node --check tools/d2_browser_probe.js` passed. The development browser tools/tests/fixtures are unchanged.
+- Offline fake-session/normalization tests cover the observed sanitized shape, band/signal/Ready/LTE mappings, missing/null/empty/malformed/future fields, canonical-state and valid-field precedence, partial endpoint failures, opaque repr/logging, identifier/address availability, unknown carrier evidence, no-session no-I/O, shared deadlines/cancellation/late-response discard, authentication stops, and byte-limit contract forwarding. No raw HTTP enforcement or new hardware semantics are claimed.
+- Five new files: `src/sim_manager/models.py`, `src/sim_manager/devices/d2/status_parser.py`, `src/sim_manager/devices/d2/status.py`, `tests/test_d2_status_parser.py`, and `tests/test_d2_status_client.py`. Six updated documentation files: `AGENTS.md`, `README.md`, `docs/ARCHITECTURE.md`, `docs/WORKFLOW.md`, `docs/devices/D2-HARDWARE-CAPABILITIES.md`, and this plan.
+- All 40 legacy file paths/SHA-256 hashes and 19 pre-existing non-document project files match the Task 005 baseline. This preserves SMS transport/original tests, all development tools/tests/fixtures, package initializers/metadata, and ignore rules. No new live-router/browser access or setting-changing operation occurred. No `artifacts/d2-private/` directory or tracked capture exists; the ignore rule is effective.
+- All five new Python files parse successfully. Code/test privacy review found no real identifier or credential values; long digit test inputs are reviewed synthetic malformed-PCI vectors. Opaque repr/logging is covered. `git diff --check` passes, and each of the five untracked files passes read-only `git diff --no-index --check` against `NUL`.
+- Git is on `main` with six modified documentation files and five untracked source/test files. `git rev-parse --show-toplevel` confirms `C:\PROJECTs\SIM-manager_workspace\sim-manager`. No Git initialization occurred in Task 005; the pre-existing workspace-root `.git` directory was left untouched. The normal index remains unstaged; no Task 005 commit was created. Task 004 Git counts above remain its historical record.
+
+Task 005 is complete within its approved device-boundary scope. The production authenticated-session implementation remains unresolved and explicit; unknown units/carrier/identifier/state semantics remain unknown. GUI/storage/account features and Task 006 were not begun. This foundation plan stays active for deferred work.
+
 ## 9. Requested outcome summary
 
 - **Keep:** D2 Telnet/UBus inbox protocol and error vocabulary, tested OTP/parser behavior, atomic JSON persistence, pure formatting/masking utilities, selected Windows helpers and UI presentation ideas.
 - **Refactor:** device SMS normalization, DITO OTP/content rules, MyDITO browser/account code, saved-account schema and cache identity, time/unit handling, controller orchestration, and carrier-specific UI coupling.
 - **Remove from the new runtime:** duplicate helper/Tkinter application flows, raw sensitive debugging, remote-page application overlay/mailboxes, hardcoded router availability, global unbound account cache assumptions, and old branding/launch/build entry points. Preserve `old/` intact.
 - **Build new:** minimal package/test/dependency setup, verified SIM/network/signal/device-capability queries, carrier/service contracts, missing polling/cache implementations if unrecoverable, neutral local UI, account-bound session/cache lifecycle, and later Smart support/outbound SMS.
-- **Completed foundation steps:** Task 001 established the package and characterized the preserved D2 SMS transport; Task 002 completed scoped transport hardening with 78 passing offline tests. Task 003 completed observational hardware discovery, a development probe, and a capability report with 139 passing offline tests. Task 004 completed firmware/admin-UI telemetry discovery with seven sanitized authenticated GET observations, 190 passing Python tests, and 36 passing Node tests; production cellular/carrier detection and Task 005 remain deferred.
+- **Completed foundation steps:** Task 001 established the package and characterized the preserved D2 SMS transport; Task 002 completed scoped transport hardening with 78 passing offline tests. Task 003 completed observational hardware discovery, a development probe, and a capability report with 139 passing offline tests. Task 004 completed firmware/admin-UI telemetry discovery with seven sanitized authenticated GET observations, 190 passing Python tests, and 36 passing Node tests. Task 005 added normalized device state and an authentication-isolated D2 status client, with 260 passing Python tests and 36 passing Node tests; carrier detection, GUI/storage/account features, and Task 006 remain deferred.

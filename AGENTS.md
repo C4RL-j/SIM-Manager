@@ -54,7 +54,7 @@ Do not create DITO-specific UI logic.
 
 Current phase:
 
-Foundation reboot: Tasks 001–004 are complete within their approved scopes. Task 004 established seven firmware-evidenced read-only telemetry GETs and a sanitized authenticated report from the user's legitimate Brave session. Verified raw labels/field types do not establish identifier validity, radio units, registration/roaming, or carrier identity. Future discovery must inspect firmware/web assets before invoking candidate getters and use only established read-only requests. Do not guess AT/UBus/CGI/RPC commands or interact with configuration controls. Production detection/carrier logic, account integration, GUI work, and Task 005 remain deferred. Use `docs/devices/D2-HARDWARE-CAPABILITIES.md` for evidence and follow `plans/active/000-foundation-reboot.md`.
+Foundation reboot: Tasks 001–005 are complete within their approved scopes. Task 005 established the carrier-neutral Device and normalized model boundary: immutable state models, defensive normalization of verified D2 telemetry, and one aggregate status client with an injected authenticated-session interface. No production bridge to the user's Brave session exists; without an injected session the client returns authentication-required unknown state without I/O. Preserve unknown units, identifier validity, registration/roaming, and carrier identity. Carrier mapping, GUI/storage/account features, and Task 006 remain deferred. Future discovery must inspect firmware/web assets before invoking candidate getters and use only established read-only requests. Do not guess AT/UBus/CGI/RPC commands or interact with configuration controls. Use `docs/devices/D2-HARDWARE-CAPABILITIES.md` for evidence and follow `plans/active/000-foundation-reboot.md`.
 
 The application repository is `sim-manager/`. Initialize Git only inside this directory. `../old/D2-desktop/` is read-only reference material, must not be added to the new repository, and must not be changed without explicit authorization.
 
@@ -81,6 +81,8 @@ Web scraping or network-response parsing may be used only behind the carrier ada
 ## Diagnostic privacy
 
 Diagnostic logs and exception output must mask or omit sensitive values. Never expose full phone numbers/MSISDNs, IMSIs, ICCIDs, OTPs, SMS bodies containing sensitive information, authentication cookies, tokens, or passwords. Do not include raw router responses or authentication payloads in diagnostic output when they could contain these values. Use synthetic values in tests and fixtures.
+
+Device-state repr/log output must also omit IMEIs, IP/DNS addresses, APNs, and Authorization values. Store availability rather than full SIM identifiers or addresses where the feature requires presence only. Opaque repr/str is not permission to serialize private model fields or raw endpoint payloads.
 
 ## Data integrity
 
