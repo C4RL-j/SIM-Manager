@@ -10,9 +10,15 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = []
 
+[project.optional-dependencies]
+desktop = ["PySide6-Essentials>=6.8,<7"]
+
 [tool.setuptools]
 package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["sim_manager*"]
+
+[tool.setuptools.package-data]
+"sim_manager.resources" = ["*.json", "*.pem"]

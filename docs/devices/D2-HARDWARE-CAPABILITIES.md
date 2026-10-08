@@ -4,11 +4,56 @@ Date: 2026-10-07 (Asia/Irkutsk)
 
 Updated: 2026-10-08 (Asia/Irkutsk)
 
-Status: Tasks 003/004 discovery and Task 005 normalized device-state boundary complete within their approved scopes; Task 006 has not begun
+Status: Tasks 003–007 and 006.1 complete within their approved scopes; Task 008 not started
 
 This report records read-only observations from the router identified by the user as a Smart Bro Home WiFi D2. It is discovery evidence, not a production device API or a carrier-detection implementation. Model, module, SIM, and cellular identity must be established from actual responses rather than the router's branding.
 
 ## Setup and evidence classifications
+
+Task 007 initially found no responding Telnet banner or HTTPS handshake within bounded deadlines. After the user connected to the D2, public firmware inspection and direct application login succeeded. The Task 007 section below supersedes those initial connectivity limitations and establishes the production session path; historical observations retain their original scope.
+
+## Task 007 — direct authentication and LIVE validation
+
+Validated on 2026-10-08 (Asia/Irkutsk), against the local D2 only. Windows hosts maps `smartbrosettings.net` to `192.168.1.1`; production connects directly to the literal IP without DNS and rejects redirects. Source discovery read the public Vue assets and the existing fixed read-only public certificate source. No credentials were read from browser storage, copied into chat or written to files.
+
+### Login and session evidence
+
+The sanitized public-source ledger is `tests/fixtures/d2/auth-source-evidence.json`; it contains asset hashes, module names, decoded-character offsets and minimal safe excerpts, rather than full bundles or authenticated captures.
+
+| Finding | Classification | Evidence / limit |
+| --- | --- | --- |
+| Login request | VERIFIED SOURCE and LIVE | `POST /web/v1/user/login`, `Content-Type: application/json;charset=utf-8`, JSON object with `username` and `password`. App module `c24f`, offset 45584; login module `c6f7`, offset 4240; Axios module `2444`, offset 15447. One legitimate application login succeeded. |
+| Credential input / transformation | VERIFIED SOURCE | Both router-admin inputs start empty and are editable/required (`c6f7`, offset 2683). No hash, encryption or base64 transformation occurs in the inspected request chain. Production preserves entered strings and assumes no username. |
+| Success response | VERIFIED SOURCE and LIVE | HTTP 200/body `code=200`, object `data`, nonempty `data.Authorization`; auxiliary `userrole`/`FirstLogin` are ignored. Module `4360`, offset 1302. No raw response or session value was exported. |
+| Protected request header | VERIFIED SOURCE and LIVE | The returned opaque value is forwarded unchanged in the case-insensitive `Authorization` header (`b775`, offset 40136). Production validates bounded header-safe ASCII and keeps it private to D2 infrastructure. No prefix is invented. |
+| Browser/cookie binding | VERIFIED LIVE for this firmware/session | Direct-IP login followed by all seven GETs succeeded without cookies, browser state, XSRF, Origin or Referer headers. Source `withCredentials=true` and stock optional Axios XSRF handling do not impose a demonstrated requirement. Other firmware remains untested. |
+| Authentication expiry response | VERIFIED SOURCE; offline enforcement | The admin interceptor clears authentication on HTTP/body 401 (`b775`, offset 40329). An unauthenticated production-transport GET returned HTTP 401. Production stops the cycle and invalidates on 401, with defensive 403 support tested offline. A real authenticated token was not deliberately expired or revoked. |
+| Session lifetime | UNKNOWN server lifetime | Admin module `56d7`, offset 3857, checks 900000 ms inactivity when clicked and calls logout. This is a frontend inactivity rule, not verified server TTL. Production does not invent a timer or retain credentials for automatic login. |
+| Rejected-password code | UNKNOWN hardware-specific code | Source rejects non-200 body codes; incorrect credentials were not intentionally submitted. Synthetic tests cover rejection without asserting an observed wrong-password code. |
+| Logout | VERIFIED SOURCE; runtime UNKNOWN | `POST /web/v1/user/logout` without explicit body (`c24f`, offset 56331). Production deliberately omits this optional request. Closing/invalidation discards local authorization and cancels work; server logout behavior was not exercised. |
+
+### Verified TLS policy
+
+The public certificate was read from the already reviewed `/opt/web/conf/server.crt` source and matches the local HTTPS peer. It is packaged as `src/sim_manager/resources/d2-server.pem`; no private key is included. DER SHA-256 is `b80c4d8777a8894acfbcda6be4389bc8329eae1d25fbc3981ae7a6e0439d4e1b`. The observed certificate is valid from 2020-10-28 to 2030-10-26 and includes IP SAN `192.168.1.1`.
+
+For the exact default IP origin, production uses an isolated trust store containing only that public certificate, with both `CERT_REQUIRED` and hostname verification enabled. Other configured private IP origins use ordinary system trust unless an explicit certificate is supplied; hostname verification remains enabled. There is no verification-disable fallback, hostname relaxation, global warning suppression, DNS lookup or redirect following. Certificate rotation/other firmware requires a reviewed trust-resource update. A live unauthenticated approved GET returned HTTP 401 through this production TLS transport, followed by successful authenticated reads.
+
+### Live application results
+
+The user entered credentials only into the native SIM Manager dialog. One legitimate login and two complete status cycles succeeded: seven approved GETs immediately after login, then the same seven through Overview Refresh. Both normalized snapshots had seven successful sources, `partial=False`, no issues, and live source `device:d2`. Native GUI rendering showed LIVE and was visually checked; no raw authenticated capture was retained. The temporary screenshot contains safe presentation values only and remains outside the repository.
+
+| Displayed field | Verified live value | Limit |
+| --- | --- | --- |
+| SIM / PIN check | Ready / Off | Reported labels; independent presence and absent/locked states remain untested. |
+| Network mode / status | LTE / Connected | No EPS-registration, roaming or Internet-health claim. |
+| Reported bands | 1 / 28 | No aggregation or primary/secondary-band interpretation. |
+| RSRP / secondary RSRP | -87 / -95 | Numeric readings only; units and path meaning remain unverified. |
+| RSRQ / RSSI / SINR | -9 / -76 / 23 | Units/measurement semantics remain unverified. |
+| WAN state / address availability | Connected / Reported | Normalized connection label and nonempty address availability only; no address/DNS value retained. |
+| Router status | Status available | All seven getters succeeded in both cycles. |
+| Carrier | Unknown | No neutral operator/PLMN value was exported or mapped. |
+
+Only legitimate login/session creation was requested as a write. No APN, RAT/network-mode, LTE-band, reboot/reset, SMS, Wi-Fi, SIM-PIN, password or firmware/configuration action was requested. The read allowlist contains exactly the seven earlier verified status GETs. This records requested operations, not an audit of firmware-internal counters/logs. Session expiry/relogin, partial failures, malformed/rejected authentication, cancellation, redaction and closure are covered offline; server TTL and runtime logout remain unknown.
 
 The existing direct shell at the default `192.168.1.1:2323` endpoint responded to the development probe. The hardened transport's Telnet decoding and terminated-marker framing worked for the recorded queries. An initial sandbox connection attempt failed; subsequent authorized network access outside that sandbox succeeded. The failed attempt does not establish an unavailable router or capability.
 
@@ -330,6 +375,16 @@ An injected session is responsible for legitimate authentication, TLS verificati
 - Git is on `main` with six modified documentation files and five untracked source/test files. The normal index remains unstaged; no Task 005 commit was created. Historical Task 004 Git counts above describe its earlier verification point, not the current tree.
 
 Task 005 is complete within its approved device-boundary scope with authentication and semantic limits explicit. No carrier mapping, GUI/storage/account integration, or Task 006 work was implemented. The foundation plan remains active for deferred work.
+
+## Task 006 — presentation of existing normalized evidence
+
+Task 006 implemented the first native Windows PySide6 shell over services derived from the existing `DeviceState`. It adds no router/modem query, raw operator value, browser authentication bridge, or hardware evidence. All Task 003–005 observations and semantic limits above remain unchanged. A presentation model converts only known enums and bounded numeric/availability fields into safe display text; carrier remains Unknown and unverified signal units remain unlabeled.
+
+Default production mode has no authenticated D2 session and must display authentication-required unknown state without router/browser I/O. Explicit `--demo` derives offline state from the sanitized Task 004 report and keeps DEMO visible; fixture fields are not presented as live observations. Messages remains a shell until a neutral SMS model/service exists. Settings is read-only, with no credential/configuration storage or router-state change. Task 006 adds no live telemetry compatibility claim and no Task 007 work.
+
+Task 006's final suites passed 285 standard-library backend/service tests (260 prior plus 25 new), 30 separate GUI tests, and 36 Node tests on Python 3.13.15 and PySide6/Qt 6.11.2. Native Windows production/demo rendering, refresh, and closure passed with no remaining refresh workers. Installed production/demo commands also launched outside the repository with no `PYTHONPATH`, exited cleanly, and produced no stdout/stderr. Editable and wheel builds passed; the packaged demo resource exactly matches the sanitized Task 004 fixture, with tests/legacy code excluded from the wheel. These software checks do not establish new hardware/authentication/firmware facts.
+
+All 40 legacy paths/SHA-256 hashes and 27 pre-existing project files outside approved documentation/metadata edits remain unchanged. The six docs and `pyproject.toml` are modified; eighteen new files comprise 17 Python modules/tests and one sanitized JSON resource. AST/TOML syntax, privacy, and tracked/untracked diff/whitespace checks passed. Git is on `main` with seven modified/eighteen untracked files, an unstaged index, and no Task 006 commit. No private captures, credentials, identifiers, hardware/browser access, or router-setting changes were introduced. Generated environment/build/distribution metadata is ignored. Historical verification totals above remain scoped to their recorded tasks. Task 006 is complete as a visual milestone; Task 007 is unstarted and the foundation plan stays active for deferred work.
 
 ## Development probe and privacy boundary
 

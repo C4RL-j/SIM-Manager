@@ -44,6 +44,8 @@ class ConnectionMode(str, Enum):
 
 class IssueCode(str, Enum):
     AUTHENTICATION_REQUIRED = "authentication_required"
+    UNREACHABLE = "unreachable"
+    CONNECTION_ERROR = "connection_error"
     UNAVAILABLE = "unavailable"
     MALFORMED_RESPONSE = "malformed_response"
     TIMEOUT = "timeout"

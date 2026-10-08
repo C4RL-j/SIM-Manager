@@ -1,7 +1,7 @@
 """Read-only aggregation of the seven verified D2 dashboard getters.
 
-Authentication is deliberately delegated to an injected session. There is no
-production bridge to an existing browser login yet; the default makes no I/O.
+Authentication is delegated to a direct D2 session. A missing session remains
+inert; the live service composes the production session independently.
 Raw payloads live only at this device boundary and are never diagnostic output.
 """
 
@@ -18,6 +18,7 @@ from typing import Protocol
 
 from sim_manager.models import DeviceIssue, DeviceState, IssueCode
 
+from .errors import D2Cancelled, D2ConnectionError, D2Unreachable
 from .status_parser import SOURCE_KEYS, normalize_status
 
 
@@ -45,11 +46,11 @@ class StatusResponse:
 
 
 class AuthenticatedStatusSession(Protocol):
-    """Contract for a future legitimate authenticated D2 HTTP session.
+    """Contract for a legitimate authenticated D2 HTTP session.
 
     Implementations must issue GET only to the supplied fixed path on their
     configured router origin, reject redirects, keep credentials private, and
-    verify TLS for HTTPS. They must bound the body by max_bytes and cooperate
+    enforce their documented router-scoped TLS policy. They must bound the body by max_bytes and cooperate
     with the absolute monotonic deadline and stop_event during network reads.
     Cleanup belongs to the session that owns its connections. Exceptions must
     omit raw responses and authentication material.
@@ -145,18 +146,36 @@ class D2StatusClient:
                 )
             except PermissionError:
                 failure = IssueCode.AUTHENTICATION_REQUIRED
+            except D2Cancelled:
+                failure = IssueCode.CANCELLED
             except TimeoutError:
                 failure = IssueCode.TIMEOUT
+            except D2Unreachable:
+                failure = IssueCode.UNREACHABLE
+            except D2ConnectionError:
+                failure = IssueCode.CONNECTION_ERROR
             except ValueError:
                 failure = IssueCode.MALFORMED_RESPONSE
             except Exception:
                 failure = IssueCode.UNAVAILABLE
+
+            # Expiry still invalidates authorization if cancellation/deadline
+            # wins presentation priority at the same moment as the response.
+            if failure is IssueCode.AUTHENTICATION_REQUIRED:
+                self._invalidate_session()
+            elif isinstance(response, StatusResponse):
+                payload_code = response.payload.get("code") if isinstance(response.payload, dict) else None
+                if response.http_status in (401, 403) or (type(payload_code) is int and payload_code in (401, 403)):
+                    self._invalidate_session()
 
             interrupted = interruption()
             if interrupted is not None:
                 mark_remaining(index, interrupted)
                 break
             if failure is IssueCode.AUTHENTICATION_REQUIRED:
+                mark_remaining(index, failure)
+                break
+            if failure is IssueCode.CANCELLED:
                 mark_remaining(index, failure)
                 break
             if failure is not None:
@@ -178,3 +197,12 @@ class D2StatusClient:
             responses[source] = payload
 
         return normalize_status(responses, errors=tuple(errors), observed_at=self._now())
+
+    def _invalidate_session(self) -> None:
+        """Forget expired authorization without leaking implementation errors."""
+        invalidate = getattr(self._session, "invalidate", None)
+        if callable(invalidate):
+            try:
+                invalidate()
+            except Exception:
+                pass

@@ -1,0 +1,118 @@
+{
+  "purpose": "Task 007 development evidence; public static source only, not an authenticated capture",
+  "observed_local_date": "2026-10-08",
+  "classification": "VERIFIED SOURCE",
+  "source_offsets": "Zero-based decoded Unicode character offsets in the exact hashed bundles",
+  "assets": {
+    "app": {
+      "path": "/opt/web/static/js/app.5af0ce0f.js",
+      "sha256": "8a9b83df2e9f1a8aab65c3268a19a37a5e10a9cf2de7137ea006f41cbe0f20e9",
+      "characters": 56895
+    },
+    "login": {
+      "path": "/opt/web/static/js/chunk-ff19fe88.a86a0aee.js",
+      "sha256": "ed6ea500c92e61ac364ab947f2878b22b0c534b89a06f87e65ac2de059ebd813",
+      "characters": 5495
+    },
+    "axios": {
+      "path": "/opt/web/static/js/chunk-libs.4f4c4243.js",
+      "sha256": "759b0d8a690869d80535a4388faf477929a8e0ec9ab3cf693019191938cbaab1",
+      "characters": 257677
+    }
+  },
+  "evidence": [
+    {
+      "asset": "login",
+      "module": "c6f7",
+      "offset": 2683,
+      "excerpt": "login:{docname:\"\",pass:\"\"}",
+      "meaning": "Both editable login inputs initially empty; no fixed username evidenced. Both form fields are required."
+    },
+    {
+      "asset": "login",
+      "module": "c6f7",
+      "offset": 4240,
+      "excerpt": "var i={username:s.$refs.docname.value,password:s.$refs.password.value};s.$store.dispatch(\"user/userLogin\",i)",
+      "meaning": "Request fields are runtime username and password. Vue input models trim strings; no hash, encryption, or base64 transform occurs in the inspected login call chain."
+    },
+    {
+      "asset": "app",
+      "module": "c24f",
+      "offset": 45584,
+      "excerpt": "function o(e){return Object(r[\"a\"])({url:\"/web/v1/user/login\",method:\"post\",data:e})}",
+      "meaning": "Login is POST to the local user/login endpoint."
+    },
+    {
+      "asset": "axios",
+      "module": "2444",
+      "offset": 15447,
+      "excerpt": "r.isObject(t)?(a(e,\"application/json;charset=utf-8\"),JSON.stringify(t)):t",
+      "meaning": "The ordinary Axios object transform serializes JSON and sets Content-Type application/json;charset=utf-8. Excerpt is the object branch within transformRequest, which begins at the recorded offset."
+    },
+    {
+      "asset": "app",
+      "module": "4360",
+      "offset": 1302,
+      "excerpt": "var r=t.data,i=r.Authorization,o=r.userrole,a=r.FirstLogin;",
+      "meaning": "After the response interceptor returns the JSON body, Vuex consumes body.data.Authorization, userrole, and FirstLogin. Wire success shape is source-derived; actual token format and auxiliary field types remain unknown until a legitimate login."
+    },
+    {
+      "asset": "app",
+      "module": "b775",
+      "offset": 40136,
+      "excerpt": "e.headers[\"authorization\"]=localStorage.getItem(\"Authorization\")",
+      "meaning": "Session material is forwarded verbatim in the Authorization header when the store token exists. The client does not add a Bearer prefix."
+    },
+    {
+      "asset": "app",
+      "module": "b775",
+      "offset": 40329,
+      "excerpt": "var t=e.data;return 200!=t.code?",
+      "meaning": "Body code 200 returns the JSON body. Every other body code rejects. Body code 401 and HTTP status 401 explicitly clear Authorization and redirect to the login route. Wrong-password-specific code is not established by this source."
+    },
+    {
+      "asset": "app",
+      "module": "c24f",
+      "offset": 56331,
+      "excerpt": "function ot(){return Object(r[\"a\"])({url:\"/web/v1/user/logout\",method:\"post\"})}",
+      "meaning": "Optional logout is POST with no explicit data. Vuex then clears local session state. Logout was not executed during source discovery."
+    },
+    {
+      "asset": "app",
+      "module": "56d7",
+      "offset": 3857,
+      "excerpt": "timeOut:9e5",
+      "meaning": "The admin UI checks elapsed inactivity on a click and invokes logout after 900000 milliseconds. This does not establish the server token lifetime."
+    }
+  ],
+  "headers": {
+    "content_type": "application/json;charset=utf-8",
+    "axios_accept_default": "application/json, text/plain, */*",
+    "protected_header_name": "authorization",
+    "protected_header_value": "Opaque value from successful body.data.Authorization, forwarded unchanged",
+    "with_credentials_source_flag": true,
+    "optional_stock_axios_xsrf": "If an XSRF-TOKEN cookie is present, stock Axios can send X-XSRF-TOKEN. No app-specific CSRF, Origin, or Referer construction was observed.",
+    "cookie_requirement": "UNKNOWN; withCredentials alone does not prove a server cookie requirement"
+  },
+  "public_certificate": {
+    "firmware_source": "/opt/web/conf/server.crt",
+    "local_artifact": "src/sim_manager/resources/d2-server.pem",
+    "der_sha256": "b80c4d8777a8894acfbcda6be4389bc8329eae1d25fbc3981ae7a6e0439d4e1b",
+    "not_before_utc": "2020-10-28T07:18:14Z",
+    "not_after_utc": "2030-10-26T07:18:14Z",
+    "subject_issuer": "C=CN, ST=guangdong, L=shenzhen, OU=Domain Control Validated",
+    "local_ip_san_verified": "192.168.1.1",
+    "tls_observation": "The peer certificate fingerprint matches the fixed read-only firmware certificate source. Local public assets were retrieved with this certificate anchor and hostname checking enabled."
+  },
+  "runtime_unknowns_at_source_discovery": [
+    "Successful login response and actual session token format",
+    "Wrong-password-specific HTTP/body code",
+    "Server session lifetime and expiry timing",
+    "Whether cookies or additional browser state are required by the server",
+    "Runtime logout invalidation behavior"
+  ],
+  "authentication_attempts": 0,
+  "browser_state_accessed": false,
+  "router_configuration_changes_requested": false,
+  "sensitive_values": "No credentials, session values, cookies, identifiers, or authenticated response bodies included"
+}
