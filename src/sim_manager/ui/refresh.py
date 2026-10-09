@@ -26,11 +26,12 @@ AUTHENTICATION_MESSAGES = {
 class _RuntimeCredentials:
     """A one-use handoff; worker arguments never retain the submitted string."""
 
-    __slots__ = ("_password", "_username")
+    __slots__ = ("_password", "_username", "remember")
 
-    def __init__(self, username: str, password: str) -> None:
+    def __init__(self, username: str, password: str, remember: bool | None = None) -> None:
         self._username = username
         self._password = password
+        self.remember = remember
 
     def take(self) -> tuple[str, str]:
         username, password = self._username, self._password
@@ -40,6 +41,7 @@ class _RuntimeCredentials:
     def clear(self) -> None:
         self._username = ""
         self._password = ""
+        self.remember = None
 
     def __repr__(self) -> str:
         return "RuntimeCredentials(<omitted>)"
@@ -58,14 +60,19 @@ def _collect_snapshot(
         if stop.is_set():
             raise RefreshCancelled()
         if credential is not None:
+            remember = credential.remember
             username, password = credential.take()
             try:
                 # The service authenticates and reads the current snapshot in
                 # this single operation; the UI never handles a session/token.
-                state = provider.authenticate(password, username=username, stop_event=stop)
+                options = {"username": username, "stop_event": stop}
+                if remember is not None:
+                    options["remember"] = remember
+                state = provider.authenticate(password, **options)
             finally:
                 username = None
                 password = None
+                options = None
         else:
             state = provider.get_device_state(stop_event=stop)
         if stop.is_set():
@@ -131,12 +138,14 @@ class RefreshController(QObject):
     def authenticating(self) -> bool:
         return self.busy and self._authenticating
 
-    def authenticate(self, password: str, *, username: str) -> bool:
+    def authenticate(self, password: str, *, username: str, remember: bool | None = None) -> bool:
         if not self._allow_authentication or not callable(getattr(self._provider, "authenticate", None)):
             return False
         if type(password) is not str or not password or type(username) is not str or not username.strip():
             return False
-        credential = _RuntimeCredentials(username, password)
+        if remember is not None and type(remember) is not bool:
+            return False
+        credential = _RuntimeCredentials(username, password, remember)
         try:
             return self._start(credential)
         finally:

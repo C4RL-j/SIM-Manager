@@ -4,7 +4,13 @@ The repository root is `C:\PROJECTs\SIM-manager_workspace\sim-manager`. Run proj
 
 The legacy tree is read-only reference material. Copy approved reusable code into `src/sim_manager/`; never import from the legacy tree at runtime. Compare before/after file lists and SHA-256 hashes when verifying that legacy files remain unchanged.
 
-Read `AGENTS.md`, the relevant docs, and the active plan before changing code. Implement only the approved task. Tasks 001–006 and 006.1 completed the transport foundation, scoped read-only hardware/firmware discovery, carrier-neutral device-state models/normalization, and the native PySide6 shell over services with explicit demo mode. Task 007 direct D2 authentication/live status is complete within its approved scope. Message normalization, carrier mapping/account features, persistent credential storage and Task 008 remain deferred.
+Read `AGENTS.md`, the relevant docs, and the active plan before changing code. Implement only the approved task. Tasks 001–008 and 006.1 completed the transport foundation, scoped read-only hardware/firmware discovery, carrier-neutral device state, direct D2 authentication/live status, native PySide6 shell and neutral read-only Messages with explicit demo isolation. Task 009 completes only DITO authentication/session lifecycle with controlled live account validation. Account data, carrier detection, Smart, persistence and Task 010 remain deferred.
+
+## D2 router login UX — separately authorized
+
+The current small request authorizes only router admin password visibility, opt-in Windows Credential Manager storage, one startup sign-in attempt and Forget. Keep this distinct from the completed MyDITO task and do not start Task 010. Never write real admin fields into application files/databases, fixtures, docs, logs, exception text or tool output. The eye does not copy credentials. Backend/service/GUI tests use synthetic providers and vaults; normal GUI composition is guarded from real credential-store access during tests.
+
+Store only after strict successful router-session proof, not merely a returned snapshot. Cover startup success/failure with no loop, alphanumeric usernames, prefill/masking, uncheck/delete, safe storage failures, Forget/cancel races and closure during a stalled write. Native vault validation may use only a new app-owned synthetic entry, first checking absence and deleting it afterward; never inspect or overwrite unrelated vault entries. No live router login is necessary for this UI/storage change. Run all backend/service, GUI and Node suites plus syntax, packaging/native launch, privacy/whitespace/diff, unchanged MyDITO and legacy hashes. Record the incremental file list and totals in the dedicated plan.
 
 ## Task 007 direct router authentication
 
@@ -31,6 +37,42 @@ Run backend/service, separate offscreen GUI and JavaScript suites before contact
 Packaging, exact native normal/demo launches, syntax, privacy review, tracked/untracked whitespace, Git diff and all legacy hashes remain required. The foundation plan stays active for later tasks.
 
 Task 008 final validation on 2026-10-08 (Asia/Irkutsk): **429 backend/service tests** passed in 1.605 seconds, **84 GUI tests** in 19.941 seconds, and **36 Node tests** in 1046.1352 ms, with zero failures. The controlled native Windows run made exactly two existing local inbox getter calls, initial load and Messages Refresh, each yielding three complete messages with no issues. In-memory list/detail checks, responsive heartbeat, unchanged returned record sets, cleared widgets and clean exit 0 passed. Application stdout/stderr and log counts were zero. The SMS transport required no HTTP session/password. Validation exported only counts/status/schema and retained no raw capture or live screenshot. No send/delete/mark-read/settings command was requested; firmware-internal effects beyond the unchanged returned records are unknown. Existing-environment editable/wheel packaging and installed normal/demo native launches passed with empty output/no owned orphans. All 50 Python files, TOML and JavaScript passed syntax checks; all 40 legacy hashes and 53 pre-existing project files outside the ten approved changes matched baseline. Privacy and tracked/untracked whitespace/diff review passed. Git has ten modified tracked files and eight new files, nothing staged, no commit created. Task 008 is complete; Task 009 remains unstarted.
+
+## Task 009 DITO authentication/session lifecycle
+
+Audit the read-only legacy reference and current official MyDITO public bundles before implementing authentication. Classify source facts, inferences, obsolete behavior and unsafe reuse separately. Source offsets/hashes belong in the sanitized DITO evidence ledger; credentials, live response bodies, session material and SMS must never become fixtures. Keep origin/request/response interpretation inside `carriers/dito/`, neutral account states/lifecycle in services, and compact injected controls in Settings.
+
+Explicit Connect opens an unnamed off-record Qt WebEngine profile for the exact official HTTPS origin. Credentials, CAPTCHA, consent and sign-in SMS requests remain user actions on the official page. Do not inspect inputs, export cookies/storage/tokens, use the normal browser, bypass challenges or automatically submit OTPs. Restrict requests to reviewed authentication/bootstrap/legal paths and assets; block subscriber/account APIs, protected account-view scripts and external telemetry. Connected requires strict successful login response evidence followed by the site's exact success transition. No URL-only guess or fixed server lifetime is permitted.
+
+Existing user-loaded neutral Messages can offer a likely DITO code only through the carrier adapter. Distinct matching codes are ambiguous; an explicit message selection can narrow the candidate. Copy requires a click, with paste and submission left to the user. Never log codes or infer freshness/account binding from unverified router timestamps. To make recently received OTPs reachable, production Messages requests up to 20 records through the existing getter's validated count parameter. The raw transport and standalone client's default remain three; this is a bounded window, with no paging or verified newest-first order. A controlled 100-record request failed malformed-response normalization; 20 returned complete records. Preserve deadlines, cancellation, wire cap and all no-write restrictions.
+
+Cancel/Disconnect/shutdown invalidate generations before disposing the page/profile and temporary OTP. Disconnect is local session disposal, without remote logout/revocation claims. Rejected login remains open for manual retry. Expiry is reported only from observed authentication failure; root/new-document navigation conservatively disconnects. Restart requires sign-in. No persistence or automatic reconnect loop is authorized.
+
+Run standard-library backend/service, separate offscreen GUI and synthetic Node observer tests before controlled sign-in. Ask the user only to complete the official window; never request credentials/codes in chat. Record closed states, counts, responsiveness, local Disconnect and profile disposal only. Do not retain live screenshots/raw captures. Then verify installed native normal/demo launches, wheel contents, syntax, tracked/untracked whitespace, diff/privacy and all legacy hashes. Do not mark Task 009 complete while legitimate sign-in/live validation is unresolved.
+
+Task 009 final verification on 2026-10-08 (Asia/Irkutsk): **500 backend/service**, **128 GUI** and **57 Node tests** passed (685 total). The final controlled single-window official sign-in reached Connected/validated login, followed by the explicit local Disconnect button returning Not connected; profile disposal, UI responsiveness and exit 0 passed, with zero application log records/private stderr bytes. Only closed states/counts were emitted: 12 allowed auth/bootstrap, two blocked non-auth API attempts, 15 blocked external requests. No balances/promos/allowances or private material was retrieved/exported. Earlier user cancellation and a separate normal app window were resolved by this final run; no bad-password/forced-expiry/server-logout experiment was performed. Native Messages load/Refresh each showed 20 complete records without private output/captures. Editable/wheel packaging, exact installed normal/demo native launches, 63 Python AST/TOML/JSON/four-JavaScript syntax checks, legacy hashes, privacy and tracked/untracked whitespace/diff review passed. The 45-entry wheel's 41 runtime files match source. All 40 legacy files and 53 pre-existing files outside approved changes are unchanged. Git on main: 18 modified tracked files, 16 new files, nothing staged, no commit created. Task 009 is complete; Task 010 has not begun. The foundation plan remains active for future work.
+
+## SIM-first refactor verification
+
+Use normalized synthetic SIM observations and memory stores for GUI/service
+tests. Verify UUID identity, validated ICCID fingerprint matching, same-number
+distinct SIMs, unknown-profile creation, renaming and metadata reload without
+active/account sessions. No new device endpoint or carrier-detection claim is
+allowed. Full numbers may be shown in normal profile UI; repr, errors, logs and
+test artifacts remain private.
+
+Verify all five navigation pages, Home network/signal details, active-only DITO
+controls, independent Messages and explicit inbox ownership. Switching SIMs must
+dispose the old account/OTP context and reject old inbox/account callbacks.
+Router authentication/status failures alone preserve the last observed profile.
+Profile metadata is DPAPI-protected outside the repository; demo/injected apps
+must never read real saved profiles. A synthetic native DPAPI roundtrip must use
+an isolated temporary location and leave existing application storage untouched.
+
+Run backend, GUI and JavaScript suites, native normal/demo composition, wheel
+contents, syntax, privacy, diff/whitespace and legacy integrity. Record results
+in the dedicated SIM-first plan. History is only a placeholder; Smart support,
+account-data retrieval and Task 12 remain outside this refactor.
 
 ## Offline transport tests
 

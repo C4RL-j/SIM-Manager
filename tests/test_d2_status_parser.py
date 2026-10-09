@@ -394,5 +394,59 @@ class EnvelopeAndPrivacyTests(unittest.TestCase):
         self.assertEqual(normalize_status({}).observed_at.tzinfo, timezone.utc)
 
 
+class SimIdentityParsingTests(unittest.TestCase):
+    @staticmethod
+    def synthetic_iccid(length=19, variant='1'):
+        prefix = '89' + variant + '0' * (length - 4)
+        for digit in '0123456789':
+            candidate = prefix + digit
+            total = 0
+            for index, char in enumerate(reversed(candidate)):
+                number = int(char) * (2 if index % 2 else 1)
+                total += number - 9 if number > 9 else number
+            if total % 10 == 0:
+                return candidate
+        raise AssertionError('Synthetic check digit unavailable')
+
+    def parse(self, identifier, phone=None):
+        return normalize_status({'device': envelope({'UICCID': identifier}), 'deviceDetails': envelope({'MSISDN': phone}), 'sim': envelope({'SIMCardState': 'Ready'})})
+
+    def test_conservative_valid_iccid_fingerprint_stable_and_raw_identifier_discarded(self):
+        for length in (19, 20):
+            identifier = self.synthetic_iccid(length)
+            state = self.parse(identifier, '+639000000001')
+            self.assertRegex(state.sim.identity_key, r'^iccid-v1:[0-9a-f]{64}$')
+            self.assertEqual(state.sim.identity_key, self.parse(identifier).sim.identity_key)
+            self.assertNotIn(identifier, repr(asdict(state)))
+            self.assertIsNone(state.sim.present)
+            self.assertEqual(state.sim.readiness, Readiness.READY)
+            for model in (state, state.sim):
+                self.assertNotIn(identifier, repr(model))
+                self.assertNotIn('+639000000001', str(model))
+
+    def test_different_valid_identifiers_have_different_fingerprints(self):
+        self.assertNotEqual(self.parse(self.synthetic_iccid()).sim.identity_key, self.parse(self.synthetic_iccid(variant='2')).sim.identity_key)
+
+    def test_masked_invalid_checksum_unicode_and_unbounded_identifiers_unknown(self):
+        valid = self.synthetic_iccid()
+        wrong_digit = valid[:-1] + str((int(valid[-1]) + 1) % 10)
+        for value in (None, 123, [], '', 'masked', '89' + '*' * 17, wrong_digit, '0' + valid[1:], ' ' + valid, valid + ' ', '８９' + '０' * 17, valid[:18], valid + '00', valid + 'F', '89' + '0' * 100000):
+            with self.subTest(kind=type(value).__name__):
+                self.assertIsNone(self.parse(value).sim.identity_key)
+
+    def test_only_evidenced_uiccid_field_may_supply_identity(self):
+        value = self.synthetic_iccid()
+        state = normalize_status({'device': envelope({'IMSI': value, 'ICCID': value}), 'sim': envelope({'UICCID': value}), 'deviceDetails': envelope({'UICCID': value, 'MSISDN': value})})
+        self.assertIsNone(state.sim.identity_key)
+        self.assertIsNone(state.sim.phone_number)
+
+    def test_reported_phone_only_bounded_ascii_syntax_without_matching_inference(self):
+        for value in ('+639000000001', '09000000001', ' 09000000001 '):
+            self.assertEqual(self.parse(None, value).sim.phone_number, value.strip())
+        for value in (None, 123, '', 'masked', '0912***4567', '１２３４５６７', '1' * 16, '+1', '0912 3456789'):
+            self.assertIsNone(self.parse(None, value).sim.phone_number)
+        self.assertIsNone(normalize_status({'device': envelope({'MSISDN': '+639000000001'})}).sim.phone_number)
+
+
 if __name__ == '__main__':
     unittest.main()

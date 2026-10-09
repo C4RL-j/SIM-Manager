@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from datetime import datetime, timezone
+import hashlib
 import math
 import re
 
@@ -33,6 +34,35 @@ _PLACEHOLDERS = frozenset({
     'masked', 'omitted', 'redacted', 'unknown', 'n/a', 'na', 'null', 'none',
     'undefined', '-', '--',
 })
+
+
+def _sim_identity(value: object) -> str | None:
+    """Conservative ICCID syntax/check digit, not issuer or ownership proof.
+
+    Accept only unmasked 19/20-digit telecom identifiers. The raw value lives
+    only in the response parsing frame and never enters the device snapshot.
+    """
+    if not isinstance(value, str) or re.fullmatch(r"89[0-9]{17,18}", value) is None:
+        return None
+    total = 0
+    for index, char in enumerate(reversed(value)):
+        digit = ord(char) - ord("0")
+        if index % 2:
+            digit *= 2
+            if digit > 9:
+                digit -= 9
+        total += digit
+    if total % 10:
+        return None
+    digest = hashlib.sha256(b"sim-manager:sim-iccid:v1\x00" + value.encode("ascii")).hexdigest()
+    return "iccid-v1:" + digest
+
+
+def _reported_phone(value: object) -> str | None:
+    if not isinstance(value, str):
+        return None
+    text = value.strip()
+    return text if re.fullmatch(r"\+?[0-9]{7,15}", text) else None
 
 
 def _populated(*values: object) -> object:
@@ -188,6 +218,8 @@ def normalize_status(
                 device.get('IMSI'), connection.get('IMSI'), details.get('IMSI')
             ),
             msisdn_availability=_availability(details.get('MSISDN')),
+            identity_key=_sim_identity(device.get('UICCID')),
+            phone_number=_reported_phone(details.get('MSISDN')),
         ),
         network=NetworkState(
             connection_mode=(

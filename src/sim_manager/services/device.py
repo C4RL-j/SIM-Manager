@@ -118,6 +118,14 @@ class LiveDeviceService:
         _check_cancelled(stop_event)
         return state
 
+    def is_authenticated(self) -> bool:
+        return self._session is not None and self._session.is_authenticated()
+
+    def invalidate_session(self) -> None:
+        """Forget local authorization while keeping explicit sign-in usable."""
+        if self._session is not None:
+            self._session.invalidate()
+
     def close(self) -> None:
         """Discard authorization and cancel owned router work on shutdown."""
         if self._session is not None:

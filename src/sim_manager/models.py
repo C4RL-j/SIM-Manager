@@ -1,7 +1,9 @@
 """Immutable, carrier-neutral device snapshots with private diagnostic reprs.
 
 Availability describes reported nonempty text, not identifier/address validity.
-No SIM identifier, credential, address, DNS value, or SMS body is stored here.
+No raw ICCID/IMSI, credential, address, DNS value, or SMS body is stored here.
+The SIM-first profile feature permits a validated reported phone number and a
+domain-separated ICCID fingerprint, both omitted from diagnostic repr/str.
 Signal measurements deliberately have no asserted units until hardware evidence
 establishes them. Explicit serialization of future private fields needs its own
 privacy review; repr/str are intentionally opaque.
@@ -70,6 +72,8 @@ class SimState(_PrivateRepr):
     iccid_availability: Availability = Availability.UNKNOWN
     imsi_availability: Availability = Availability.UNKNOWN
     msisdn_availability: Availability = Availability.UNKNOWN
+    identity_key: str | None = None
+    phone_number: str | None = None
 
 
 @dataclass(frozen=True, slots=True, repr=False)

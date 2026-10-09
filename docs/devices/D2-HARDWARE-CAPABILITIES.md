@@ -423,6 +423,14 @@ Optional raw output requires the explicit `--capture-raw` flag and is written on
 
 The E18 binding query assumes at most one default route per address family, matching E13/E17 on this router. Multiple defaults produce a multiline comparison value and may leave every binding flag false for that family. Such a negative result would be inconclusive; extend the development query and its tests before applying it to that topology. No production routing model is derived from this probe.
 
+## Task 009 — bounded Messages window
+
+Task 009's legitimate account sign-in exposed a limit in the prior three-record window: a manual Refresh still showed older messages. Controlled calls to the same read-only `sms.get.inboxdata` getter varied only its existing `ReadNum` parameter. A request for 100 failed safe malformed-response normalization; a request for 20 returned 20 complete records with the already verified JSON-string `data.ItemList` schema and no issues. One likely DITO authentication-code match occurred beyond the first three records; neither its content nor identifiers were exported.
+
+Production `LiveMessageService` now requests 20, while raw transport and standalone `D2MessageClient` defaults remain three. Counts must be exact integers from 1 through 100; support for a count is not a firmware compatibility guarantee. No paging/newest-first/freshness/read-state/storage semantics were inferred. Connection/response/overall deadlines, cancellation and one MiB raw cap remain unchanged, with no new getter or writes.
+
+The controlled native Messages run made one load and one Refresh, both yielding 20 complete messages with no issues. In-memory list/detail consistency, unchanged returned records, event-loop responsiveness, content clearing and clean exit passed. No application stdout/stderr/log record, live screenshot or raw capture was produced. Sending/deletion/read-state/configuration requests remained absent; unobserved firmware effects remain unknown.
+
 ## Recommended future abstractions and validation
 
 Keep device identity, SIM state/identity, cellular registration/operator, radio measurements, WAN connectivity, and modem identity as separate neutral results. Preserve observed labels and explicit unknown units/semantics until their interpretation is verified. Task 005 established the production model/parser boundary described above; expanded hardware validation remains separate future work.

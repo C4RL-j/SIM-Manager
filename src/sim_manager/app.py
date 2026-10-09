@@ -11,6 +11,8 @@ if TYPE_CHECKING:
 
     from sim_manager.services.device import SnapshotProvider
     from sim_manager.services.messages import MessageProvider
+    from sim_manager.services.accounts import AccountService
+    from sim_manager.services.sim_profiles import SimProfileService
     from sim_manager.ui.main_window import MainWindow
 
 
@@ -33,26 +35,55 @@ def create_application(argv: list[str] | None = None) -> QApplication:
 def create_window(
     *, demo: bool = False, provider: SnapshotProvider | None = None,
     message_provider: MessageProvider | None = None,
+    account_service: AccountService | None = None,
+    sim_profiles: SimProfileService | None = None,
 ) -> MainWindow:
     from PySide6.QtCore import QTimer
     from PySide6.QtWidgets import QApplication
 
     from sim_manager.services.device import DemoDeviceService, LiveDeviceService
     from sim_manager.services.messages import DemoMessageService, LiveMessageService
+    from sim_manager.services.accounts import DemoAccountService, DitoAccountService
+    from sim_manager.services.router_login import D2LoginService
+    from sim_manager.services.sim_profiles import SimProfileService
     from sim_manager.ui.main_window import MainWindow
 
     selected = provider if provider is not None else (DemoDeviceService() if demo else LiveDeviceService())
+    router_login = None
+    if provider is None and not demo:
+        from sim_manager.storage.windows_credentials import WindowsD2CredentialStore
+        router_login = D2LoginService(selected, WindowsD2CredentialStore(selected.router_address))
+        selected = router_login
     # Injected snapshot providers are used by offline consumers/tests. They
     # never implicitly enable a separate live SMS connection on navigation.
     messages = message_provider
     if messages is None and provider is None:
         messages = DemoMessageService() if demo else LiveMessageService()
-    window = MainWindow(selected, demo=demo, message_provider=messages)
+    account = account_service
+    if account is None and provider is None:
+        if demo:
+            account = DemoAccountService()
+        else:
+            def create_carrier_browser():
+                # Optional WebEngine imports and all network activity begin
+                # only after the user's explicit Connect action.
+                from sim_manager.carriers.dito.browser import DitoBrowserSurface
+                return DitoBrowserSurface()
+            account = DitoAccountService(browser_factory=create_carrier_browser)
+    profiles = sim_profiles
+    if profiles is None:
+        if provider is None and not demo:
+            from sim_manager.storage.sim_profiles import WindowsSimProfileStore
+            profiles = SimProfileService(store=WindowsSimProfileStore())
+        else:
+            profiles = SimProfileService(demo=demo)
+    window = MainWindow(selected, demo=demo, message_provider=messages, account_service=account,
+                        router_login_service=router_login, sim_profiles=profiles)
     application = QApplication.instance()
     if application is not None:
         application.aboutToQuit.connect(window.shutdown)
     # Rendering/refresh occurs only after Qt starts processing events.
-    QTimer.singleShot(0, window.start_refresh)
+    QTimer.singleShot(0, window.start_initial_load)
     return window
 
 

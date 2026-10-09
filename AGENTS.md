@@ -54,7 +54,7 @@ Do not create DITO-specific UI logic.
 
 Current phase:
 
-Foundation reboot: Tasks 001–008 and 006.1 are complete within their approved scopes. Task 008 completed the authorized read-only SMS inbox: preserved D2 Telnet/UBus getter → neutral message model/parser → message service → Messages UI, with controlled live load/Refresh validation. Keep HTTP authentication/session/status separate from SMS transport. Preserve explicit independent DEMO mode, unknown units/registration/roaming/carrier, background refresh, cancellation and bounded shutdown. SMS contents may appear only in the requested Messages UI and private in-memory models, never diagnostics, exceptions, captures or persisted files. No sends, deletes, read-state writes, carrier/account integration, router configuration writes, persistence or Task 009 work is authorized. Use `docs/devices/D2-HARDWARE-CAPABILITIES.md` for evidence and follow `plans/active/000-foundation-reboot.md`.
+Foundation reboot: Tasks 001–009 and 006.1 are complete within their approved scopes. Task 009 implements only DITO account authentication/session lifecycle through an isolated official MyDITO surface, behind carrier → service → GUI boundaries, with controlled live Connected/local Disconnect validation. Keep HTTP router authentication/status and neutral SMS retrieval independent. Legacy remains read-only. Do not port URL-only login guesses, persistent profiles/numbers, DOM overlays or automatic OTP submission. Credentials, OTPs and raw cookies/tokens must never enter diagnostics, application files or chat; MyDITO session state remains in memory. Preserve explicit DEMO isolation and bounded cancellation/shutdown. The current user request separately authorizes D2 admin password visibility, opt-in Windows Credential Manager storage, one startup login attempt and explicit Forget. MyDITO authentication/storage stays unchanged. No balance/promos/allowances, Smart, carrier auto-detection, sends/deletes, router configuration writes, DITO persistence or Task 010 work is authorized. Follow `docs/carriers/DITO.md` and `plans/active/000-foundation-reboot.md`.
 
 PySide6 is the approved native-shell framework. Historical pywebview/WebView2 discussions concern legacy code and a possible future carrier-account browser surface, not a current desktop-framework requirement. Do not open a browser automatically or import development probes into the GUI runtime.
 
@@ -63,6 +63,15 @@ The application repository is `sim-manager/`. Initialize Git only inside this di
 Do not implement Smart features unless the active task explicitly requests them.
 
 However, new DITO code must be structured so Smart can later implement the same carrier interface.
+
+The active user request authorizes the SIM-first refactor: saved SIM profile
+metadata, verified identity matching, profile creation/renaming and Home, SIMs,
+Messages, History placeholder and Settings navigation. It supersedes historical
+restrictions on profile/number persistence above. Phone numbers may appear in
+normal UI; diagnostics remain private. Profile metadata is stored separately
+from router credentials and carrier sessions. DITO controls belong to the active
+DITO profile; no Smart support, History implementation, account-data retrieval or
+Task 12 is authorized.
 
 ## Authentication and account integration
 

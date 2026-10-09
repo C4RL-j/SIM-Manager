@@ -29,7 +29,48 @@ class MessageServiceTests(unittest.TestCase):
         with patch("sim_manager.devices.d2.router.fetch_sms_response") as fetch:
             service = LiveMessageService()
             self.assertEqual(repr(service), "LiveMessageService(<details omitted>)")
+            self.assertEqual(service.read_limit, 20)
             fetch.assert_not_called()
+
+    def test_production_default_fetches_up_to_twenty_through_same_getter(self):
+        payload = {"code": 200, "msg": "ok", "data": {"ItemList": [
+            {"SmsId": number, "number": "Synthetic sender", "content": "Synthetic message"}
+            for number in range(20)
+        ]}}
+        with patch("sim_manager.devices.d2.router.fetch_sms_response", return_value=payload) as fetch:
+            service = LiveMessageService()
+            result = service.get_messages()
+        self.assertEqual(service.read_limit, 20)
+        self.assertTrue(result.available)
+        self.assertEqual(len(result.messages), 20)
+        self.assertEqual(fetch.call_args.args, ("192.168.1.1", 2323, 20))
+        self.assertEqual(fetch.call_args.kwargs["connect_timeout"], 3.0)
+        self.assertEqual(fetch.call_args.kwargs["response_timeout"], 30.0)
+        self.assertEqual(fetch.call_args.kwargs["max_response_bytes"], 1024 * 1024)
+
+    def test_injected_configured_client_reports_its_own_read_limit(self):
+        service = LiveMessageService(D2MessageClient(Mock(), read_num=7))
+        self.assertEqual(service.read_limit, 7)
+        with self.assertRaises(AttributeError):
+            service.read_limit = 3
+
+    def test_legacy_or_malformed_injected_client_limit_uses_safe_three(self):
+        self.assertEqual(LiveMessageService(object()).read_limit, 3)
+        for value in (None, True, False, "100", 0, 101, 100.0, {"token": "Synthetic private token"}):
+            with self.subTest(value_type=type(value).__name__):
+                client = Mock()
+                client.read_limit = value
+                self.assertEqual(LiveMessageService(client).read_limit, 3)
+
+    def test_private_injected_limit_error_is_not_exposed(self):
+        class BrokenClient:
+            @property
+            def read_limit(self):
+                raise RuntimeError("Synthetic private token")
+        with self.assertNoLogs(level="DEBUG"):
+            service = LiveMessageService(BrokenClient())
+            self.assertEqual(service.read_limit, 3)
+        self.assertNotIn("Synthetic private token", repr(service))
 
     def test_live_cancellation_before_call_does_no_fetch(self):
         stop = threading.Event()
@@ -105,6 +146,7 @@ class MessageServiceTests(unittest.TestCase):
             self.assertTrue(service.is_demo)
             self.assertTrue(inbox.available)
             self.assertEqual(len(inbox.messages), 2)
+            self.assertEqual(service.read_limit, 2)
             self.assertTrue(all(message.identity.startswith("demo-") for message in inbox.messages))
             self.assertIn("synthetic", inbox.messages[0].body)
             fetch.assert_not_called()

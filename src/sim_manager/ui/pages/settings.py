@@ -1,8 +1,7 @@
-"""Read-only application information; no router configuration writes."""
+"""Router and application settings, independent of SIM account controls."""
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QFormLayout, QFrame, QLabel, QVBoxLayout, QWidget
-
+from PySide6.QtWidgets import QFormLayout, QFrame, QLabel, QPushButton, QVBoxLayout, QWidget
 
 class SettingsPage(QWidget):
     def __init__(self, parent: QWidget | None = None, *, router_address: str | None = None) -> None:
@@ -16,13 +15,24 @@ class SettingsPage(QWidget):
         self.connection_label = QLabel("Unknown")
         self.connection_label.setTextFormat(Qt.TextFormat.PlainText)
         self.connection_label.setWordWrap(True)
-        layout.addWidget(self._group("Router information", (
+        router_group = self._group("Router information", (
             ("Router address", self.router_address_label), ("Status", self.connection_label),
-        )))
+        ))
+        self.saved_login_note = QLabel()
+        self.saved_login_note.setTextFormat(Qt.TextFormat.PlainText)
+        self.saved_login_note.setWordWrap(True)
+        self.saved_login_note.setObjectName("muted")
+        self.saved_login_note.hide()
+        self.forget_login_button = QPushButton("Forget saved login")
+        self.forget_login_button.setAccessibleName("Forget saved D2 router login")
+        self.forget_login_button.hide()
+        router_group.layout().addWidget(self.saved_login_note)
+        router_group.layout().addWidget(self.forget_login_button)
+        layout.addWidget(router_group)
         layout.addWidget(self._group("Application information", (
             ("Name", QLabel("SIM Manager")), ("Version", QLabel("0.1.0")),
         )))
-        note = QLabel("Settings are read-only in this version.")
+        note = QLabel("Router settings are read-only in this version.")
         note.setObjectName("muted")
         layout.addWidget(note)
         layout.addStretch()

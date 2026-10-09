@@ -296,6 +296,60 @@ class MessageClientTests(unittest.TestCase):
         fetch.assert_called_once_with("192.168.1.1", 2323, 3, connect_timeout=3.0, response_timeout=30.0,
                                       stop_event=stop, max_response_bytes=router.MAX_RESPONSE_BYTES)
 
+    def test_configured_read_count_changes_only_getter_count(self):
+        for count in (1, 7, 100):
+            with self.subTest(count=count):
+                fetch = Mock(return_value=response([item()]))
+                stop = threading.Event()
+                client = D2MessageClient(fetch, read_num=count)
+                self.assertEqual(client.read_limit, count)
+                self.assertTrue(client.get_messages(stop_event=stop).available)
+                fetch.assert_called_once_with("192.168.1.1", 2323, count,
+                                              connect_timeout=3.0, response_timeout=30.0,
+                                              stop_event=stop, max_response_bytes=router.MAX_RESPONSE_BYTES)
+
+    def test_default_and_configured_read_limits_are_read_only(self):
+        self.assertEqual(D2MessageClient().read_limit, router.READ_NUM)
+        client = D2MessageClient(read_num=100)
+        with self.assertRaises(AttributeError):
+            client.read_limit = 1
+        self.assertEqual(client.read_limit, 100)
+        self.assertEqual(router.READ_NUM, 3)
+
+    def test_invalid_read_counts_fail_before_io_without_coercion(self):
+        for value in (0, -1, 101, True, False, 3.0, "100", None, [], {}):
+            with self.subTest(value_type=type(value).__name__):
+                fetch = Mock()
+                with self.assertRaisesRegex(ValueError, "integer from 1 to 100"):
+                    D2MessageClient(fetch, read_num=value)
+                fetch.assert_not_called()
+
+    def test_invalid_private_count_does_not_reach_errors_logs_or_conversion(self):
+        class PrivateValue:
+            def __str__(self):
+                raise AssertionError(PRIVATE_BODY)
+            def __repr__(self):
+                return PRIVATE_BODY
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output), contextlib.redirect_stderr(output), self.assertNoLogs(level="DEBUG"):
+            with self.assertRaises(ValueError) as caught:
+                D2MessageClient(read_num=PrivateValue())
+        self.assertEqual(output.getvalue(), "")
+        self.assertNotIn(PRIVATE_BODY, str(caught.exception))
+        self.assertNotIn(PRIVATE_BODY, repr(caught.exception))
+
+    def test_larger_read_preserves_cancellation_and_late_result_limit(self):
+        stop = threading.Event()
+        stop.set()
+        fetch = Mock(return_value=response([item()] * 100))
+        result = D2MessageClient(fetch, read_num=100).get_messages(stop_event=stop)
+        self.assertEqual(result.issues, (Code.CANCELLED,))
+        fetch.assert_not_called()
+        clock = Mock(side_effect=[0, 0, MESSAGE_DEADLINE_SECONDS + 1])
+        result = D2MessageClient(fetch, read_num=100, clock=clock).get_messages()
+        self.assertEqual(result.issues, (Code.TIMEOUT,))
+        self.assertEqual(result.messages, ())
+
     def test_real_transport_noise_and_wrapper_remain_behind_device_boundary(self):
         shell = "synthetic shell noise\n" + json.dumps(response([item()], stringified=True)) + "\n# "
         fetch = Mock(side_effect=lambda *args, **kwargs: router.get_sms_response(shell))

@@ -4,16 +4,18 @@ from contextlib import redirect_stderr, redirect_stdout
 import io
 import threading
 import time
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from PySide6.QtCore import Qt
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QDialog, QDialogButtonBox, QLineEdit
+from PySide6.QtWidgets import QDialog, QDialogButtonBox, QLineEdit, QToolButton
 
 from sim_manager.models import DeviceIssue, DeviceState, IssueCode
 from sim_manager.services.device import AuthenticationError, AuthenticationFailure
 from sim_manager.ui.authentication import RouterSignInDialog
 from sim_manager.ui.refresh import _RuntimeCredentials
+from sim_manager.storage.windows_credentials import RememberedD2Login
 
 from test_desktop import DesktopCase, known_snapshot
 
@@ -72,8 +74,8 @@ class AuthenticationProvider:
 
 
 class SignInDialogTests(DesktopCase):
-    def dialog(self):
-        dialog = RouterSignInDialog("https://192.168.1.1", self.window())
+    def dialog(self, **kwargs):
+        dialog = RouterSignInDialog("https://192.168.1.1", self.window(), **kwargs)
         dialog.show()
         self.addCleanup(dialog.reject)
         return dialog
@@ -120,6 +122,7 @@ class SignInDialogTests(DesktopCase):
                 dialog.credentials_submitted.connect(lambda username, password: submitted.append((username, password)))
                 dialog.username_input.setText(USERNAME)
                 dialog.password_input.setText(PASSWORD)
+                dialog.password_visibility_action.trigger()
                 if action == "escape":
                     QTest.keyClick(dialog, Qt.Key.Key_Escape)
                 else:
@@ -128,6 +131,8 @@ class SignInDialogTests(DesktopCase):
                 self.assertEqual(dialog.username_input.text(), "")
                 self.assertFalse(dialog.password_input.isUndoAvailable())
                 self.assertFalse(dialog.username_input.isUndoAvailable())
+                self.assertEqual(dialog.password_input.echoMode(), QLineEdit.EchoMode.Password)
+                self.assertFalse(dialog.password_visibility_action.isChecked())
                 self.assertEqual(submitted, [])
                 self.assertNotIn(PASSWORD, repr(dialog))
 
@@ -154,6 +159,140 @@ class SignInDialogTests(DesktopCase):
         dialog.username_input.setText("  synthetic username  ")
         dialog.accept()
         self.assertEqual(submitted, [("  synthetic username  ", PASSWORD)])
+
+    def test_eye_toggles_current_password_and_accessibility_without_submission_or_clipboard(self):
+        dialog = self.dialog()
+        dialog.username_input.setText(USERNAME)
+        dialog.password_input.setText(PASSWORD)
+        submitted = []
+        dialog.credentials_submitted.connect(lambda username, password: submitted.append(True))
+        clipboard_type = type(self.application.clipboard())
+        output = io.StringIO()
+        with redirect_stdout(output), redirect_stderr(output), patch.object(
+            clipboard_type, "setText", side_effect=AssertionError("Clipboard writes forbidden"),
+        ), patch.object(clipboard_type, "clear", side_effect=AssertionError("Clipboard writes forbidden")):
+            self.assertFalse(dialog.password_visibility_action.isChecked())
+            self.assertFalse(dialog.password_visibility_action.icon().isNull())
+            dialog.password_visibility_action.trigger()
+            self.assertEqual(dialog.password_input.echoMode(), QLineEdit.EchoMode.Normal)
+            self.assertEqual(dialog.password_input.text(), PASSWORD)
+            self.assertEqual(dialog.password_visibility_action.text(), "Hide password")
+            eye = next(button for button in dialog.password_input.findChildren(QToolButton)
+                       if button.defaultAction() is dialog.password_visibility_action)
+            self.assertEqual(eye.accessibleName(), "Hide password")
+            dialog.password_visibility_action.trigger()
+            self.assertEqual(dialog.password_input.echoMode(), QLineEdit.EchoMode.Password)
+            self.assertEqual(dialog.password_input.text(), PASSWORD)
+            self.assertEqual(dialog.password_visibility_action.text(), "Show password")
+            self.assertEqual(eye.accessibleName(), "Show password")
+        self.assertEqual(output.getvalue(), "")
+        self.assertEqual(submitted, [])
+        self.assertEqual(dialog.username_input.text(), USERNAME)
+
+    def test_remember_is_opt_in_and_submit_snapshots_choice_before_cleared_handoff(self):
+        dialog = self.dialog()
+        self.assertFalse(dialog.remember_checkbox.isChecked())
+        self.assertTrue(dialog.remember_checkbox.isEnabled())
+        self.assertFalse(dialog.remember_requested)
+        self.assertFalse(dialog.forget_button.isVisible())
+        self.assertIn("D2 router admin login", self.displayed_text(dialog))
+        self.assertIn("separate from your DITO account", self.displayed_text(dialog))
+        dialog.username_input.setText(USERNAME)
+        dialog.password_input.setText(PASSWORD)
+        dialog.remember_checkbox.setChecked(True)
+        dialog.password_visibility_action.trigger()
+        observed = []
+        dialog.credentials_submitted.connect(lambda username, password: observed.append((
+            username == USERNAME, password == PASSWORD, dialog.remember_requested,
+            dialog.username_input.text() == "", dialog.password_input.text() == "",
+            dialog.password_input.echoMode() == QLineEdit.EchoMode.Password,
+        )))
+        dialog.accept()
+        self.assertEqual(observed, [(True, True, True, True, True, True)])
+        self.assertNotIn(PASSWORD, repr(dialog) + self.displayed_text(dialog))
+
+    def test_only_typed_remembered_model_prefills_inputs_and_remains_masked(self):
+        dialog = self.dialog(remembered_login=RememberedD2Login(USERNAME, PASSWORD))
+        self.assertEqual(dialog.username_input.text(), USERNAME)
+        self.assertEqual(dialog.password_input.text(), PASSWORD)
+        self.assertEqual(dialog.password_input.echoMode(), QLineEdit.EchoMode.Password)
+        self.assertTrue(dialog.remember_checkbox.isChecked())
+        self.assertTrue(dialog.forget_button.isVisible())
+        other = self.dialog(remembered_login=SimpleNamespace(username=USERNAME, password=PASSWORD))
+        self.assertEqual(other.username_input.text(), "")
+        self.assertEqual(other.password_input.text(), "")
+        self.assertFalse(other.remember_checkbox.isChecked())
+        self.assertFalse(other.forget_button.isVisible())
+
+    def test_forget_clears_inputs_undo_visibility_and_choice_before_secret_free_signal(self):
+        dialog = self.dialog(remembered_login=RememberedD2Login(USERNAME, PASSWORD))
+        dialog.password_visibility_action.trigger()
+        observed = []
+        dialog.forget_requested.connect(lambda: observed.append((
+            dialog.username_input.text() == "", dialog.password_input.text() == "",
+            dialog.password_input.echoMode() == QLineEdit.EchoMode.Password,
+            dialog.remember_checkbox.isChecked(), dialog.remember_requested,
+            dialog.forget_button.isVisible(),
+        )))
+        dialog.forget_button.click()
+        self.assertEqual(observed, [(True, True, True, False, False, False)])
+        self.assertFalse(dialog.username_input.isUndoAvailable())
+        self.assertFalse(dialog.password_input.isUndoAvailable())
+        self.assertTrue(dialog.isVisible())
+
+    def test_unavailable_remember_storage_keeps_runtime_login_and_cannot_request_save(self):
+        dialog = self.dialog(remember_available=False)
+        self.assertFalse(dialog.remember_checkbox.isEnabled())
+        self.assertFalse(dialog.remember_checkbox.isChecked())
+        self.assertIn("unavailable", dialog.storage_note.text())
+        # A programmatically checked disabled control must still not save.
+        dialog.remember_checkbox.setChecked(True)
+        dialog.username_input.setText(USERNAME)
+        dialog.password_input.setText(PASSWORD)
+        requested = []
+        dialog.credentials_submitted.connect(lambda username, password: requested.append(dialog.remember_requested))
+        dialog.accept()
+        self.assertEqual(requested, [False])
+
+    def test_external_forget_clears_autofill_without_recursive_storage_signal(self):
+        dialog = self.dialog(remembered_login=RememberedD2Login(USERNAME, PASSWORD))
+        dialog.password_visibility_action.trigger()
+        requests = []
+        dialog.forget_requested.connect(lambda: requests.append(True))
+        dialog.clear_autofill()
+        self.assertEqual(requests, [])
+        self.assertEqual(dialog.username_input.text(), "")
+        self.assertEqual(dialog.password_input.text(), "")
+        self.assertEqual(dialog.password_input.echoMode(), QLineEdit.EchoMode.Password)
+        self.assertFalse(dialog.remember_checkbox.isChecked())
+        self.assertFalse(dialog.forget_button.isVisible())
+
+    def test_alphanumeric_router_usernames_are_accepted_without_numeric_validator(self):
+        for username in ("admin7", "D2Admin42"):
+            with self.subTest(username=username):
+                dialog = self.dialog()
+                self.assertIsNone(dialog.username_input.validator())
+                dialog.username_input.setText(username)
+                dialog.password_input.setText(PASSWORD)
+                submitted = []
+                dialog.credentials_submitted.connect(lambda value, password: submitted.append(value))
+                dialog.accept()
+                self.assertEqual(submitted, [username])
+
+    def test_raw_storage_notice_is_redacted_and_cancel_does_not_remember(self):
+        dialog = self.dialog()
+        output = io.StringIO()
+        with redirect_stdout(output), redirect_stderr(output):
+            dialog.set_storage_notice(PASSWORD)
+            dialog.username_input.setText(USERNAME)
+            dialog.password_input.setText(PASSWORD)
+            dialog.remember_checkbox.setChecked(True)
+            dialog.reject()
+        self.assertEqual(output.getvalue(), "")
+        self.assertNotIn(PASSWORD, dialog.storage_note.text() + repr(dialog))
+        self.assertFalse(dialog.remember_requested)
+        self.assertEqual(dialog.username_input.text(), "")
+        self.assertEqual(dialog.password_input.text(), "")
 
 
 class AuthenticationFlowTests(DesktopCase):
@@ -237,7 +376,7 @@ class AuthenticationFlowTests(DesktopCase):
         self.assertEqual(window.status_label.text(), "● Router data available")
         self.assertTrue(window.live_label.isVisible())
         self.assertFalse(window.sign_in_button.isVisible())
-        for page in range(3):
+        for page in range(5):
             window.navigation.setCurrentRow(page)
             self.assertTrue(window.live_label.isVisible())
         self.assertNotIn(PASSWORD, self.displayed_text(window))
@@ -312,7 +451,7 @@ class AuthenticationFlowTests(DesktopCase):
         self.submit(window)
         self.wait_until(provider.started.is_set)
         stop = provider.auth_calls[0][1]
-        window.navigation.setCurrentRow(2)
+        window.navigation.setCurrentRow(4)
         self.assertTrue(window.cancel_button.isVisible())
         QTest.mouseClick(window.cancel_button, Qt.MouseButton.LeftButton)
         self.wait_until(lambda: not window.refresh_controller.busy)

@@ -168,13 +168,22 @@ class D2MessageClient:
 
     def __init__(
         self, fetcher: Callable[..., object] | None = None,
-        *, clock: Callable[[], float] = time.monotonic,
+        *, read_num: int = router.READ_NUM,
+        clock: Callable[[], float] = time.monotonic,
     ) -> None:
+        if type(read_num) is not int or not 1 <= read_num <= 100:
+            # Configuration errors must not format a supplied private value.
+            raise ValueError("Message read limit must be an integer from 1 to 100.")
         self._fetcher = fetcher if fetcher is not None else router.fetch_sms_response
+        self._read_num = read_num
         self._clock = clock
 
     def __repr__(self) -> str:
         return "D2MessageClient(<details omitted>)"
+
+    @property
+    def read_limit(self) -> int:
+        return self._read_num
 
     def get_messages(self, *, stop_event: Event | None = None) -> MessageInbox:
         deadline = self._clock() + MESSAGE_DEADLINE_SECONDS
@@ -185,7 +194,7 @@ class D2MessageClient:
         failure: MessageIssueCode | None = None
         try:
             response = self._fetcher(
-                router.ROUTER_HOST, router.ROUTER_PORT, router.READ_NUM,
+                router.ROUTER_HOST, router.ROUTER_PORT, self._read_num,
                 connect_timeout=3.0, response_timeout=30.0,
                 stop_event=stop_event, max_response_bytes=router.MAX_RESPONSE_BYTES,
             )

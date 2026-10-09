@@ -72,7 +72,7 @@ class MessageGuiTests(DesktopCase):
         return window
 
     def load_messages(self, window):
-        window.navigation.setCurrentRow(1)
+        window.navigation.setCurrentRow(2)
         self.wait_until(lambda: not window.messages_controller.busy)
 
     def test_opening_messages_loads_once_independently_of_http_authentication(self):
@@ -86,7 +86,7 @@ class MessageGuiTests(DesktopCase):
         self.assertEqual(window.messages_page.status_label.text(), "2 messages")
         self.assertEqual(window.status_label.text(), "Authentication required")
         self.assertFalse(window.refresh_controller.busy)
-        for page in (2, 0, 1):
+        for page in (4, 0, 2):
             window.navigation.setCurrentRow(page)
         self.assertEqual(len(provider.calls), 1)
 
@@ -145,7 +145,7 @@ class MessageGuiTests(DesktopCase):
         self.assertFalse(window.messages_page.refresh_button.isEnabled())
         self.assertFalse(window.messages_page.cancel_button.isVisible())
         # The page is hidden here; its cancel action becomes visible on navigation.
-        window.navigation.setCurrentRow(1)
+        window.navigation.setCurrentRow(2)
         self.assertTrue(window.messages_page.cancel_button.isVisible())
         provider.release.set()
         self.wait_until(lambda: not window.messages_controller.busy)
@@ -304,7 +304,7 @@ class MessageGuiTests(DesktopCase):
 
     def test_no_message_provider_disables_fetch_without_device_construction(self):
         window = self.window()
-        window.navigation.setCurrentRow(1)
+        window.navigation.setCurrentRow(2)
         self.assertIsNone(window.messages_controller)
         self.assertFalse(window.start_messages_refresh())
         self.assertFalse(window.messages_page.refresh_button.isEnabled())

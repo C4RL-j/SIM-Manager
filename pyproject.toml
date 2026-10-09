@@ -11,7 +11,7 @@ requires-python = ">=3.11"
 dependencies = []
 
 [project.optional-dependencies]
-desktop = ["PySide6-Essentials>=6.8,<7"]
+desktop = ["PySide6-Essentials>=6.8,<7", "PySide6-Addons>=6.8,<7"]
 
 [tool.setuptools]
 package-dir = {"" = "src"}
@@ -22,3 +22,4 @@ include = ["sim_manager*"]
 
 [tool.setuptools.package-data]
 "sim_manager.resources" = ["*.json", "*.pem"]
+"sim_manager.carriers.dito" = ["*.js"]

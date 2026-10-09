@@ -16,6 +16,10 @@ from sim_manager.message_models import Message, MessageInbox, MessageIssueCode
 class MessageProvider(Protocol):
     is_demo: bool
 
+    @property
+    def read_limit(self) -> int:
+        ...
+
     def get_messages(self, *, stop_event: Event | None = None) -> MessageInbox:
         ...
 
@@ -26,10 +30,18 @@ class LiveMessageService:
     is_demo = False
 
     def __init__(self, client: D2MessageClient | None = None) -> None:
-        self._client = client if client is not None else D2MessageClient()
+        self._client = client if client is not None else D2MessageClient(read_num=20)
 
     def __repr__(self) -> str:
         return "LiveMessageService(<details omitted>)"
+
+    @property
+    def read_limit(self) -> int:
+        try:
+            value = getattr(self._client, "read_limit", 3)
+        except Exception:
+            return 3
+        return value if type(value) is int and 1 <= value <= 100 else 3
 
     def get_messages(self, *, stop_event: Event | None = None) -> MessageInbox:
         if stop_event is not None and stop_event.is_set():
@@ -63,6 +75,7 @@ class DemoMessageService:
     """Explicit synthetic inbox; never connects or falls back to live mode."""
 
     is_demo = True
+    read_limit = 2
 
     def __repr__(self) -> str:
         return "DemoMessageService(<details omitted>)"

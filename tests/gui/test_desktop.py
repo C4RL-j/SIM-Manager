@@ -5,6 +5,7 @@ No test authenticates to a router, opens a browser, or reads a live message.
 """
 
 from contextlib import ExitStack, redirect_stderr, redirect_stdout
+from dataclasses import replace
 from datetime import datetime, timezone
 import io
 import os
@@ -29,6 +30,9 @@ with patch("socket.socket", side_effect=AssertionError("Real sockets forbidden")
             Readiness, SimState, WanState,
         )
         from sim_manager.services.device import RefreshCancelled
+        from sim_manager.services.sim_profiles import SimProfileService
+        from sim_manager.sim_models import SimCarrier
+        from sim_manager.storage.sim_profiles import MemorySimProfileStore
         from sim_manager.ui.main_window import MainWindow
 
 
@@ -51,6 +55,19 @@ def known_snapshot(*, source="device:d2", errors=(), partial=False):
         observed_at=datetime(2026, 10, 8, tzinfo=timezone.utc), source=source,
         successful_sources=SOURCES, errors=errors, partial=partial,
     )
+
+
+def active_dito_profiles(*, demo=False):
+    """A saved synthetic DITO identity with verified current SIM evidence."""
+    profiles = SimProfileService(MemorySimProfileStore(), demo=demo)
+    snapshot = known_snapshot(source="demo:d2" if demo else "device:d2")
+    snapshot = replace(snapshot, sim=replace(
+        snapshot.sim, present=True, identity_key="iccid-v1:" + "a" * 64,
+        phone_number="+639000000001",
+    ))
+    profiles.observe(snapshot)
+    profiles.create_profile("Synthetic DITO SIM", "+639000000001", SimCarrier.DITO)
+    return profiles, snapshot
 
 
 class ControlledProvider:
@@ -96,6 +113,19 @@ class DesktopCase(unittest.TestCase):
         self.addCleanup(self.guards.close)
         for target in ("socket.socket", "socket.create_connection", "subprocess.Popen", "webbrowser.open"):
             self.guards.enter_context(patch(target, side_effect=AssertionError("External I/O forbidden")))
+        # Normal composition must not read this PC's real saved credentials.
+        self.guards.enter_context(patch("sim_manager.storage.windows_credentials.WindowsD2CredentialStore.load", return_value=None))
+        for operation in ("save", "delete"):
+            self.guards.enter_context(patch(
+                "sim_manager.storage.windows_credentials.WindowsD2CredentialStore." + operation,
+                side_effect=AssertionError("Real credential storage forbidden")))
+        self.guards.enter_context(patch(
+            "sim_manager.storage.sim_profiles.WindowsSimProfileStore.load", return_value=(),
+        ))
+        self.guards.enter_context(patch(
+            "sim_manager.storage.sim_profiles.WindowsSimProfileStore.save",
+            side_effect=AssertionError("Real SIM profile storage forbidden"),
+        ))
         self.windows = []
         self.providers = []
         self.addCleanup(self.clean_windows)
@@ -133,7 +163,7 @@ class DesktopCase(unittest.TestCase):
         self.application.processEvents()
 
     def values(self, window):
-        return {key: label.text() for key, label in window.overview_page.values.items()}
+        return {key: label.text() for key, label in window.home_page.values.items()}
 
     def displayed_text(self, window):
         text = [window.windowTitle()]
@@ -157,13 +187,13 @@ class ApplicationAndShellTests(DesktopCase):
         self.assertIs(QApplication.instance(), self.application)
         self.assertTrue(self.application.styleSheet())
 
-    def test_window_construction_has_three_pages_and_sensible_size(self):
+    def test_window_construction_has_five_pages_and_sensible_size(self):
         provider = self.provider()
         window = self.window(provider)
         self.assertEqual(window.windowTitle(), "SIM Manager")
-        self.assertEqual(window.navigation.count(), 3)
-        self.assertEqual([window.navigation.item(i).text() for i in range(3)], ["Overview", "Messages", "Settings"])
-        self.assertEqual(window.pages.count(), 3)
+        self.assertEqual(window.navigation.count(), 5)
+        self.assertEqual([window.navigation.item(i).text() for i in range(5)], ["Home", "SIMs", "Messages", "History", "Settings"])
+        self.assertEqual(window.pages.count(), 5)
         self.assertEqual(window.minimumWidth(), 840)
         self.assertEqual(window.minimumHeight(), 600)
         self.assertGreaterEqual(window.width(), 840)
@@ -173,7 +203,7 @@ class ApplicationAndShellTests(DesktopCase):
 
     def test_navigation_switches_existing_pages(self):
         window = self.window()
-        for index, page in enumerate((window.overview_page, window.messages_page, window.settings_page)):
+        for index, page in enumerate((window.home_page, window.sims_page, window.messages_page, window.history_page, window.settings_page)):
             window.navigation.setCurrentRow(index)
             self.application.processEvents()
             self.assertIs(window.pages.currentWidget().widget(), page)
@@ -222,7 +252,7 @@ class ApplicationAndShellTests(DesktopCase):
         self.assertFalse(window.demo_label.isHidden())
         self.assertIn("DEMO", window.demo_label.text())
         self.assertEqual(self.values(window)["carrier"], "Unknown")
-        window.navigation.setCurrentRow(2)
+        window.navigation.setCurrentRow(4)
         self.application.processEvents()
         self.assertFalse(window.demo_label.isHidden())
 
@@ -320,7 +350,7 @@ class PolishedShellTests(DesktopCase):
     def test_navigation_icons_keep_accessible_page_names(self):
         window = self.window()
         self.assertEqual(window.navigation.accessibleName(), "Pages")
-        for index, name in enumerate(("Overview", "Messages", "Settings")):
+        for index, name in enumerate(("Home", "SIMs", "Messages", "History", "Settings")):
             item = window.navigation.item(index)
             self.assertEqual(item.text(), name)
             self.assertFalse(item.icon().isNull())
@@ -328,10 +358,10 @@ class PolishedShellTests(DesktopCase):
             self.assertTrue(item.isSelected())
             self.assertEqual(window.title_label.text(), name)
 
-    def test_refresh_action_is_visible_only_on_overview(self):
+    def test_refresh_action_is_visible_only_on_home(self):
         provider = self.provider()
         window = self.window(provider)
-        for index in (0, 1, 2, 0):
+        for index in (0, 1, 2, 3, 4, 0):
             window.navigation.setCurrentRow(index)
             self.application.processEvents()
             self.assertEqual(window.refresh_button.isVisible(), index == 0)
@@ -343,7 +373,7 @@ class PolishedShellTests(DesktopCase):
         window = self.window(provider)
         window.start_refresh()
         self.wait_until(provider.started.is_set)
-        for index in (0, 1, 2):
+        for index in (0, 1, 2, 3, 4):
             window.navigation.setCurrentRow(index)
             self.application.processEvents()
             self.assertEqual(window.refresh_button.isVisible(), index == 0)
@@ -383,7 +413,7 @@ class PolishedShellTests(DesktopCase):
         window.render_snapshot(known_snapshot(source="demo:d2"))
         self.assertEqual(window.status_label.text(), "● Demo data • Router not connected")
         self.assertIs(window.status_label.property("banner"), False)
-        for index in range(3):
+        for index in range(5):
             window.navigation.setCurrentRow(index)
             self.application.processEvents()
             self.assertTrue(window.demo_label.isVisible())
@@ -406,28 +436,28 @@ class PolishedShellTests(DesktopCase):
         window = self.window()
         window.render_snapshot(known_snapshot())
         self.application.processEvents()
-        labels = window.overview_page.values
+        labels = window.home_page.values
         identity = labels["carrier"]
         self.assertEqual(identity.text(), "Unknown")
         self.assertIs(identity.parentWidget(), labels["network_mode"].parentWidget())
         self.assertIs(identity.parentWidget(), labels["sim_state"].parentWidget())
         self.assertGreater(identity.fontMetrics().height(), labels["rsrp"].fontMetrics().height())
-        self.assertLess(identity.mapTo(window.overview_page, QPoint()).y(), labels["rsrp"].mapTo(window.overview_page, QPoint()).y())
+        self.assertLess(identity.mapTo(window.home_page, QPoint()).y(), labels["rsrp"].mapTo(window.home_page, QPoint()).y())
         self.assertLess(labels["wan_state"].fontMetrics().height(), labels["rsrp"].fontMetrics().height())
         for label in labels.values():
             self.assertEqual(label.textFormat(), Qt.TextFormat.PlainText)
             self.assertTrue(label.accessibleName())
 
-    def test_default_overview_fits_and_minimum_size_avoids_horizontal_scrolling(self):
+    def test_default_home_fits_and_minimum_size_avoids_horizontal_scrolling(self):
         window = self.window()
         window.render_snapshot(known_snapshot())
         window.resize(1120, 760)
         self.application.processEvents()
-        overview = window.pages.widget(0)
-        self.assertEqual(overview.verticalScrollBar().maximum(), 0)
-        self.assertEqual(overview.horizontalScrollBar().maximum(), 0)
+        home = window.pages.widget(0)
+        self.assertEqual(home.verticalScrollBar().maximum(), 0)
+        self.assertEqual(home.horizontalScrollBar().maximum(), 0)
         window.resize(840, 600)
-        for index in range(3):
+        for index in range(5):
             window.navigation.setCurrentRow(index)
             self.application.processEvents()
             self.assertEqual(window.pages.currentWidget().horizontalScrollBar().maximum(), 0)
@@ -438,8 +468,10 @@ class PolishedShellTests(DesktopCase):
         text = self.displayed_text(window.settings_page)
         self.assertIn("Router information", text)
         self.assertIn("Application information", text)
-        self.assertIn("Settings are read-only", text)
-        self.assertEqual(window.settings_page.findChildren(QPushButton), [])
+        self.assertIn("Router settings are read-only", text)
+        self.assertEqual(set(window.settings_page.findChildren(QPushButton)), {
+            window.settings_page.forget_login_button,
+        })
 
 
 class RefreshLifecycleTests(DesktopCase):

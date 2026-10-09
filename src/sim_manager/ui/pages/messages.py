@@ -7,13 +7,16 @@ from PySide6.QtWidgets import (
 )
 
 from sim_manager.message_models import Message, MessageInbox
+from sim_manager.sim_models import SimProfile
 
 
 class MessagesPage(QWidget):
     refresh_requested = Signal()
     cancel_requested = Signal()
+    message_selected = Signal(object)
 
-    def __init__(self, parent: QWidget | None = None, *, demo: bool = False) -> None:
+    def __init__(self, parent: QWidget | None = None, *, demo: bool = False,
+                 read_limit: int = 3) -> None:
         super().__init__(parent)
         self._demo = demo
         self._messages: tuple[Message, ...] = ()
@@ -21,8 +24,19 @@ class MessagesPage(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(10)
+        self.sim_context_label = QLabel()
+        self.sim_context_label.setObjectName("muted")
+        self.sim_context_label.setTextFormat(Qt.TextFormat.PlainText)
+        self.sim_context_label.setWordWrap(True)
+        self.sim_context_label.setSizePolicy(
+            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred,
+        )
+        layout.addWidget(self.sim_context_label)
+        self.set_sim_context(None)
         toolbar = QHBoxLayout()
-        description = QLabel("Read-only inbox • Up to 3 messages per refresh")
+        if type(read_limit) is not int or not 1 <= read_limit <= 100:
+            read_limit = 3
+        description = QLabel(f"Read-only inbox • Up to {read_limit} messages per refresh")
         description.setObjectName("muted")
         description.setWordWrap(True)
         toolbar.addWidget(description, 1)
@@ -81,6 +95,17 @@ class MessagesPage(QWidget):
     @property
     def loaded(self) -> bool:
         return self._loaded
+
+    def set_sim_context(self, profile: SimProfile | None, current_sim: bool = False) -> None:
+        if isinstance(profile, SimProfile) and current_sim:
+            name = profile.name if type(profile.name) is str else "Unnamed SIM"
+            phone = profile.phone_number if type(profile.phone_number) is str and profile.phone_number else "Number not provided"
+            text = f"Inbox for {name} · {phone}"
+        elif current_sim:
+            text = "Inbox for the inserted SIM · No saved profile"
+        else:
+            text = "Inbox for the router's SIM · Current SIM not identified"
+        self.sim_context_label.setText(text)
 
     def set_available(self, available: bool) -> None:
         self.refresh_button.setEnabled(available)
@@ -144,15 +169,26 @@ class MessagesPage(QWidget):
             self.sender_label.setText("Select a message")
             self.timestamp_label.clear()
             self.content_view.clear()
+            self.message_selected.emit(None)
             return
         message = self._messages[row]
         self.sender_label.setText(message.sender if type(message.sender) is str and message.sender else "Unknown sender")
         self.timestamp_label.setText(message.timestamp if type(message.timestamp) is str and message.timestamp else "Unknown time")
         # Plain-text widgets neither interpret HTML nor open links in SMS.
         self.content_view.setPlainText(message.body if type(message.body) is str else "")
+        self.message_selected.emit(message)
 
     def clear_private_content(self) -> None:
         """Drop in-memory widget/model references when the window closes."""
         self._messages = ()
+        self._loaded = False
         self.message_list.clear()
         self._select_message(-1)
+        self.empty_label.setText("No messages loaded")
+        self.empty_label.show()
+        self.set_notice("Messages not loaded.")
+
+    def reset_inbox(self) -> None:
+        """A new SIM must not inherit the previous SIM's rows or message count."""
+        self.clear_private_content()
+        self.set_notice("Open Messages to load this SIM's inbox.")

@@ -1,0 +1,118 @@
+{
+  "kind": "public-source authentication evidence and closed live outcomes; no account captures or private values",
+  "inspected_date": "2026-10-08",
+  "live_account_verified": true,
+  "controlled_validation": {
+    "date": "2026-10-08",
+    "login_success_and_route_verified": true,
+    "connected_gui": true,
+    "local_disconnect": true,
+    "profile_disposed": true,
+    "responsive": true,
+    "process_exit_code": 0,
+    "application_log_records": 0,
+    "private_stderr_bytes": 0,
+    "allowed_auth_bootstrap_requests": 12,
+    "blocked_non_auth_api_attempts": 2,
+    "blocked_external_requests": 15,
+    "private_captures_retained": false,
+    "scope": "Authentication/session establishment and explicit local disposal only. No account-data request admitted; actual server expiry/logout/revocation were not tested."
+  },
+  "sources": [
+    {
+      "url": "https://dito.ph/",
+      "fact": "Official DITO navigation links MyDITO Account directly to https://my.dito.ph/.",
+      "classification": "VERIFIED_PUBLIC_SOURCE"
+    },
+    {
+      "url": "https://my.dito.ph/",
+      "bytes": 4127,
+      "sha256": "2505dd2c3cf4283cba2c25043c753e990bd747d99141495de78a6db19df00593",
+      "fact": "Public HTML shell references the listed first-party JavaScript assets. External vconsole and Google analytics scripts are not required authentication APIs.",
+      "classification": "VERIFIED_PUBLIC_SOURCE"
+    },
+    {
+      "url": "https://my.dito.ph/umi.bf77fdf1.js",
+      "bytes": 1426667,
+      "sha256": "f4f359351df609d845c2cf09b417001a52c56e5cd151d80c6d3fdf8afec4cdec",
+      "facts": [
+        {"offset": 313700, "module": "login model", "fact": "Official site posts /ecare/webs/user/login and consumes top-level loginSuccess. Authentication observer requires strict boolean true rather than generic truthiness."},
+        {"offset": 316312, "module": "login model", "fact": "loginSuccess effect installs the site-owned session, conditionally attempts subscriber details, then redirects to configured success route."},
+        {"offset": 318900, "module": "login model", "fact": "Official GET /ecare/webs/user/logout succeeds only when its JSON result is number zero. Site clears session and returns to root."},
+        {"offset": 1081092, "module": "mW0K", "fact": "Configured loginSuccessJumpLink is /pto/home."},
+        {"offset": 1191613, "module": "t3Un", "fact": "Request prefix is empty, credentials are included, and auth APIs use same-origin relative paths. No alternate auth API origin was evidenced."},
+        {"offset": 1193040, "module": "t3Un", "fact": "Desktop request error handling treats HTTP 401 or PORTAL-SECURITY error code as login-required and returns to the root sign-in route. No session lifetime is specified."},
+        {"offset": 35700, "module": "+n12", "fact": "Official session cleanup clears auth cookies and its local storage. SIM Manager does not extract these values."},
+        {"offset": 90717, "module": "0WZ6", "fact": "Sign-in input validation uses POST /ecare/webs/user/login/check; common config and legal content requests are separate from account balance APIs."}
+      ],
+      "classification": "VERIFIED_PUBLIC_SOURCE"
+    },
+    {
+      "url": "https://my.dito.ph/layouts__BaseLayout.90e0e6a7.async.js",
+      "bytes": 3884,
+      "sha256": "4390a29349c962f7eb10c21819d8771f1352f14aeba27df3606eabf4deb4a3fd",
+      "facts": [
+        {"offset": 1085, "module": "qvvg", "fact": "Protected layout getInCode may return to root when the site's logged-in helper fails. Ix2d.k requires an auth cookie and locally stored subscriber details, which are beyond this task's minimum authentication state."},
+        {"offset": 1502, "module": "qvvg", "fact": "Protected layout handleInitQry initiates account balance and usage bootstrap. Its account-view script is blocked rather than permitting those APIs."},
+        {"offset": 2321, "module": "qvvg", "fact": "Protected layout mount includes another subscriber-info guard and account bootstrap. Blocking its lazy script prevents those effects before the application's closed-state poll."}
+      ],
+      "classification": "VERIFIED_PUBLIC_SOURCE"
+    },
+    {
+      "url": "https://my.dito.ph/p__Home.d0391f07.async.js",
+      "bytes": 28075,
+      "sha256": "be72b57ecaa4e9632a97218e4fc652ebfbbb4006ece42854b925ba5cff4ebcbb",
+      "fact": "Protected Home chunk renders account balance/promo content. The /pto/home route loads this chunk and BaseLayout lazily after the login-success session effect, as referenced at umi offset 1249519. Both account-view chunk families are denied, while the source-backed success-route observation and site-owned session installation remain unchanged.",
+      "classification": "VERIFIED_PUBLIC_SOURCE"
+    },
+    {
+      "url": "https://my.dito.ph/p__Login.a8b21259.async.js",
+      "bytes": 68082,
+      "sha256": "417b00e58f58d4bc55f558844211b52d0078795c68eb15e36aeed77afb7fc477",
+      "facts": [
+        {"offset": 35300, "fact": "Official screen offers SMS and password sign-in. The production surface leaves all fields and challenges to the user."},
+        {"offset": 19800, "fact": "Get SMS Code is a user click with default sendType one. Password reset uses sendType two and is excluded from the auth request policy."},
+        {"offset": 20100, "fact": "SMS code control has a six-character limit. No current live SMS text/template was inspected."},
+        {"offset": 23880, "fact": "Successful credentials may still require a user Privacy Statement and Agree action before loginSuccess effect. Server success alone is insufficient session establishment proof."}
+      ],
+      "classification": "VERIFIED_PUBLIC_SOURCE"
+    }
+  ],
+  "auth_request_policy": {
+    "origin": "https://my.dito.ph",
+    "POST": [
+      "/ecare/webs/user/login",
+      "/ecare/webs/captcha/check",
+      "/ecare/webs/user/login/check",
+      "/ecare/webs/common/configParam",
+      "/ecare/webs/content/qryContentByCode",
+      "/ecare/webs/cust/sign/privacyPolicy",
+      "/ecare/webs/message/sms/1/{synthetic-structural-mobile-number}"
+    ],
+    "GET": [
+      "/ecare/webs/user/logout",
+      "/ecare/webs/common/defCurrencyType",
+      "/ecare/common/currencyType/default",
+      "/ecare/webs/captcha/{requestSN}",
+      "/",
+      "/pto/home"
+    ],
+    "static_assets": "Read-only safe extension paths at the origin root or under /assets/ and /lib/, excluding layouts__BaseLayout and p__Home account-view async JavaScript families.",
+    "denied": "All other APIs, subscriber/customer detail queries, balances, allowances, promos, purchases, password reset, external telemetry, external debug scripts, router origins and wildcard origins."
+  },
+  "legacy_audit": [
+    {"source": "../old/D2-desktop/desktop.py:32", "classification": "VERIFIED_PUBLIC_SOURCE", "fact": "Legacy URL remains the current officially linked MyDITO origin."},
+    {"source": "../old/D2-desktop/otp.py:49", "classification": "INFERRED", "fact": "DITO sender plus six digits followed by authentication-code wording is a historical likely-OTP matcher, not a current verified SMS template or freshness guarantee."},
+    {"source": "../old/D2-desktop/otp_submit.py:495", "classification": "UNSAFE_TO_REUSE", "fact": "Dashboard URL/DOM hints alone are not an auth-session success proof. Automatic OTP submission lacks the explicit user action required by Task 009."},
+    {"source": "../old/D2-desktop/desktop.py:1970", "classification": "UNSAFE_TO_REUSE", "fact": "Legacy private_mode false uses a persistent WebView profile. Task 009 uses an isolated memory-only profile."},
+    {"source": "../old/D2-desktop/user_settings.py:17", "classification": "UNSAFE_TO_REUSE", "fact": "Legacy settings persist subscriber numbers. New authentication does not reuse those settings or read the normal browser profile."},
+    {"source": "../old/D2-desktop/README.txt", "classification": "OBSOLETE", "fact": "Historical pywebview framework, injected home overlay, watcher automation, dashboard/account scraping and cache behavior are excluded from the current native auth-only design."}
+  ],
+  "unknowns": [
+    "Alternative account/login result schemas and future site-build route gating remain unverified; strict loginSuccess true plus exact success transition passed the observed controlled sign-in.",
+    "Exact session lifetime, renewal behavior and any future auth source changes.",
+    "Compatibility of the restricted auth-only handoff with other account/site builds. Blocking automatic subscriber details and account-view chunks passed the observed controlled sign-in, without retrieving their data.",
+    "Router timestamp timezone, OTP freshness/account binding and universal SMS-template compatibility. One likely-code match was observed privately in a 20-record inbox; no SMS template/code was exported.",
+    "Server logout behavior on a real account; local disposal alone is not claimed as remote session revocation."
+  ]
+}
