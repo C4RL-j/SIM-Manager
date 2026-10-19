@@ -5,10 +5,9 @@ startup option plus close-to-tray behavior. After the optional clarification
 remained unanswered, startup is interpreted as Start with Windows (opt-in).
 New installs default to close-to-tray; existing explicit preferences are preserved.
 
-Destination verified: authenticated GitHub user `C4RL-j`; no existing
-`C4RL-j/SIM-Manager` repository, remote or version tags. First public release will
-use the existing project version `v0.1.0`. Publish only reviewed application
-source and intentional release assets; preserve existing authorized work.
+Published to the public `C4RL-j/SIM-Manager` repository using the existing project
+version `v0.1.0`. Only reviewed application source and intentional release assets
+were uploaded; existing authorized work was preserved.
 
 - [x] Inspect repository/version/history/account/tooling and release constraints.
 - [x] Audit all source/fixtures/history for private data before public upload.
@@ -16,9 +15,9 @@ source and intentional release assets; preserve existing authorized work.
   dependencies, branding, version metadata, notices, ZIP and SHA-256.
 - [x] Add optional Start with Windows and retain explicit tray Exit.
 - [x] Test source, isolated packaged executable and package contents.
-- [ ] Review/stage intentional source, commit and tag the tested version.
-- [ ] Create public repository, push source/tag, publish GitHub release/assets.
-- [ ] Verify public repository, release commit, assets and downloaded checksum.
+- [x] Review/stage intentional source, commit and tag the tested version.
+- [x] Create public repository, push source/tag, publish GitHub release/assets.
+- [x] Verify public repository, release commit, assets and downloaded checksum.
 
 No private account/router validation, credentials, automatic OTP, router settings,
 SMS mutation, Smart support, History implementation or unrelated task is added.
@@ -51,3 +50,25 @@ Pre-publication results (2026-10-19):
 - Notice source links/hashes were checked. Git attributes preserve exact notice
   bytes across Windows clones so recorded hashes remain valid. The initial build
   was superseded after correcting one source URL and omitting optional QML data.
+
+Publication results (2026-10-19):
+
+- Public repository: https://github.com/C4RL-j/SIM-Manager
+- Latest stable release: https://github.com/C4RL-j/SIM-Manager/releases/tag/v0.1.0
+  Published at `2026-10-19T02:25:39Z`; authenticated and anonymous API reads both
+  confirmed the release is public, not a draft or prerelease, with two assets.
+- Annotated tag `v0.1.0` points to source commit
+  `3a9452d2ae76797a3335ba14d52c49d1fa52f781`. Main also receives this documentation
+  completion record; the tested release tag and runtime sources remain unchanged.
+- GitHub confirmed the ZIP's exact 185067038-byte size and SHA-256 above, plus
+  the uploaded 95-byte checksum file. Both downloaded assets matched locally.
+- A fresh extraction of the downloaded ZIP passed all 17 frozen EXE checks again:
+  version 0.1.0, seven resources, exit 0, empty stderr and no new browser processes.
+  An earlier local extraction also passed after renaming the EXE and clearing
+  Python/Qt paths from the child environment. No account or router was accessed.
+- The first download wrapper hit Windows PowerShell's missing process-exit-code
+  reporting even though the application's report passed. A rerun with an explicit
+  process handle in PowerShell 7 confirmed exit 0 and the same 17 passing checks.
+- The remote source tree contained 169 reviewed files with no generated binaries,
+  environments, logs, captures or databases. The final review also corrected the
+  fresh-environment build recipe to install the project metadata before freezing.

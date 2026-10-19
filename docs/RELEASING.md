@@ -5,6 +5,7 @@ Build on Windows x64 with 64-bit Python 3.13 and the pinned dependencies:
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r packaging/requirements-build.txt
+.\.venv\Scripts\python.exe -m pip install --no-deps -e .
 powershell -NoProfile -ExecutionPolicy Bypass -File tools/Build-Portable.ps1
 ```
 
