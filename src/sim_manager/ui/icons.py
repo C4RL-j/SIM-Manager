@@ -1,7 +1,19 @@
-"""Small monochrome navigation marks drawn with Qt, without asset dependencies."""
+"""Application branding and small monochrome navigation marks."""
+
+from importlib.resources import files
 
 from PySide6.QtCore import QRectF, Qt
 from PySide6.QtGui import QColor, QIcon, QPainter, QPainterPath, QPen, QPixmap
+
+
+def application_icon() -> QIcon:
+    """Load the supplied artwork from installed package resources."""
+    pixmap = QPixmap()
+    try:
+        data = files("sim_manager.resources").joinpath("sim-manager.png").read_bytes()
+    except (OSError, ModuleNotFoundError):
+        return QIcon()
+    return QIcon(pixmap) if pixmap.loadFromData(data, "PNG") else QIcon()
 
 
 def navigation_icon(page: str) -> QIcon:

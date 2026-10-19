@@ -20,7 +20,8 @@ from sim_manager.services.accounts import AccountService
 from sim_manager.services.router_login import D2LoginService, LoginStorageIssue
 
 from .authentication import RouterSignInDialog
-from .icons import navigation_icon
+from .account_refresh import AccountRefreshController
+from .icons import application_icon, navigation_icon
 from .messages_refresh import MESSAGE_FAILURES, MessagesRefreshController
 from .pages.messages import MessagesPage
 from .pages.home import HomePage
@@ -28,6 +29,8 @@ from .pages.sims import SimsPage
 from .pages.history import HistoryPage
 from .pages.settings import SettingsPage
 from .refresh import AUTHENTICATION_MESSAGES, RefreshController
+from .preferences import AppPreferences, MemoryPreferencesStore, PREFERENCES_SAVE_FAILURE
+from .tray import TrayDashboard
 
 
 class MainWindow(QMainWindow):
@@ -37,6 +40,9 @@ class MainWindow(QMainWindow):
         account_service: AccountService | None = None,
         router_login_service: D2LoginService | None = None,
         sim_profiles: SimProfileService | None = None,
+        preferences_store=None,
+        enable_tray: bool = False,
+        startup_service=None,
     ) -> None:
         super().__init__()
         if getattr(provider, "is_demo", False) is True and not demo:
@@ -64,10 +70,25 @@ class MainWindow(QMainWindow):
         self._profile_notice = ""
         self._sim_generation = 0
         self._messages_generation = 0
+        # Injected/offline windows never start independent periodic account work
+        # unless their caller explicitly supplies preferences enabling it.
+        self._preferences_store = preferences_store if preferences_store is not None else MemoryPreferencesStore(
+            AppPreferences(auto_refresh=False),
+        )
+        try:
+            preferences = self._preferences_store.load()
+        except Exception:
+            preferences = None
+        self._preferences = preferences if type(preferences) is AppPreferences else AppPreferences()
+        self._exit_requested = False
+        self._windows_startup = startup_service
+        self._device_view = present_device(DeviceState())
         # This is the service's safe configured address, never a response field.
         router_address = getattr(provider, "router_address", None)
         self._router_address = router_address if type(router_address) is str and len(router_address) <= 256 else None
         self.setWindowTitle("SIM Manager" + (" · DEMO" if demo else ""))
+        branding = application_icon()
+        self.setWindowIcon(branding)
         self.setMinimumSize(840, 600)
         self.resize(self.minimumSize())
         root = QWidget()
@@ -82,10 +103,12 @@ class MainWindow(QMainWindow):
         side = QVBoxLayout(sidebar)
         side.setContentsMargins(18, 28, 18, 24)
         side.setSpacing(10)
-        mark = QLabel("SM")
+        mark = QLabel()
         mark.setObjectName("brandMark")
         mark.setFixedSize(42, 42)
         mark.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        mark.setPixmap(branding.pixmap(QSize(42, 42), self.devicePixelRatioF()))
+        mark.setAccessibleName("SIM Manager logo")
         brand = QLabel("SIM Manager")
         brand.setObjectName("brand")
         subtitle = QLabel("Your SIM workspace")
@@ -162,20 +185,24 @@ class MainWindow(QMainWindow):
         content.addWidget(self.status_surface)
 
         self.pages = QStackedWidget()
-        self.home_page = HomePage()
+        self.home_page = HomePage(account_service=account_service, demo=demo)
         self.overview_page = self.home_page
-        self.sims_page = SimsPage(account_service=account_service, demo=demo)
+        self.sims_page = SimsPage()
         self.history_page = HistoryPage()
         message_limit = getattr(message_provider, "read_limit", 3)
         if type(message_limit) is not int or not 1 <= message_limit <= 100:
             message_limit = 3
         self.messages_page = MessagesPage(demo=demo, read_limit=message_limit)
         self.settings_page = SettingsPage(router_address=self._router_address)
-        self.messages_page.message_selected.connect(self.sims_page.account_controls.offer_selected_message)
-        self.sims_page.account_controls.state_changed.connect(self._record_account_state)
+        self.settings_page.set_preferences(self._preferences)
+        self._refresh_windows_startup()
+        self.messages_page.message_selected.connect(self.home_page.account_controls.offer_selected_message)
+        self.home_page.account_controls.state_changed.connect(self._record_account_state)
         self.sims_page.create_requested.connect(self._create_profile)
         self.sims_page.rename_requested.connect(self._rename_profile)
         self.home_page.messages_requested.connect(lambda: self.navigation.setCurrentRow(2))
+        self.home_page.account_refresh_requested.connect(self.start_account_refresh)
+        self.home_page.account_sign_in_requested.connect(self.open_account_sign_in)
         for page in (self.home_page, self.sims_page, self.messages_page, self.history_page, self.settings_page):
             scroller = QScrollArea()
             scroller.setWidgetResizable(True)
@@ -204,8 +231,31 @@ class MainWindow(QMainWindow):
         self.sign_in_button.clicked.connect(self.open_sign_in)
         self.settings_page.forget_login_button.clicked.connect(self.forget_saved_login)
         self.navigation.currentRowChanged.connect(self._change_page)
+        self.tray_dashboard = TrayDashboard(self, enabled=enable_tray)
+        self._tray_owns_lifecycle = self.tray_dashboard.available
+        if self._tray_owns_lifecycle:
+            from PySide6.QtWidgets import QApplication
+            application = QApplication.instance()
+            if application is not None:
+                application.setQuitOnLastWindowClosed(False)
+        self.account_refresh_controller = AccountRefreshController(self._request_account_data, self)
+        self.account_refresh_controller.configure(
+            self._preferences.auto_refresh, self._preferences.refresh_interval,
+        )
+        self.account_refresh_controller.changed.connect(self._render_tray_dashboard)
+        self.settings_page.set_tray_available(self.tray_dashboard.available)
+        self.settings_page.preferences_changed.connect(self._change_preferences)
+        self.settings_page.startup_requested.connect(self._change_windows_startup)
+        self.tray_dashboard.refresh_requested.connect(self.start_account_refresh)
+        self.tray_dashboard.open_requested.connect(self.show_main_window)
+        self.tray_dashboard.exit_requested.connect(self.request_exit)
         self.navigation.setCurrentRow(0)
         self.render_snapshot(DeviceState())
+        # An injected/restored runtime session may already be authenticated.
+        # The scheduler defers its first read so the service's existing
+        # post-login automatic read can claim the same in-flight slot first.
+        if self._account_service is not None:
+            self._record_account_state(self._account_service.state)
 
     def _change_page(self, index: int) -> None:
         if not 0 <= index < 5:
@@ -234,7 +284,7 @@ class MainWindow(QMainWindow):
         if self._closed or self._messages_generation != self._sim_generation:
             return
         self.messages_page.render(inbox)
-        self.sims_page.account_controls.offer_otp(inbox)
+        self.home_page.account_controls.offer_otp(inbox)
 
     def _set_messages_busy(self, busy: bool) -> None:
         self.messages_page.set_busy(busy)
@@ -275,6 +325,7 @@ class MainWindow(QMainWindow):
             self._show_refresh_error("Router status unavailable")
             return
         view = present_device(state)
+        self._device_view = view
         if self.sim_profiles.observe(state):
             self._switching_sim = True
             try:
@@ -297,7 +348,7 @@ class MainWindow(QMainWindow):
                 QTimer.singleShot(0, self.start_messages_refresh)
         self.home_page.render(view)
         self._refresh_profile_views()
-        self.settings_page.connection_label.setText(view.router_status)
+        self.settings_page.render(view)
         self._authentication_required = view.notice == "Authentication required"
         self._automatic_sign_in = False
         self.live_label.setVisible(
@@ -312,19 +363,18 @@ class MainWindow(QMainWindow):
         current = self.sim_profiles.current_sim
         self.home_page.render_profile(active, current_sim=current,
                                       phone_number=self.sim_profiles.current_phone_number)
+        self.home_page.set_account_available(self._account_context_available())
         self.sims_page.render_profiles(
             self.sim_profiles.profiles, active, can_create=self.sim_profiles.can_create,
             current_sim=current, notice=self._profile_notice or self.sim_profiles.notice,
             current_phone_number=self.sim_profiles.current_phone_number,
         )
         self.messages_page.set_sim_context(active, current_sim=current)
-        self.sims_page.account_controls.set_context(
-            not self._account_context_failed and active is not None and current and active.carrier is SimCarrier.DITO,
-        )
         if self._account_context_failed:
-            self.sims_page.account_controls.render_state(
+            self.home_page.account_controls.render_state(
                 AccountState(phase=AccountPhase.ERROR, issue=AccountIssue.UNAVAILABLE, is_demo=self._demo),
             )
+        self._sync_background_views()
 
     def _create_profile(self, name: str, phone_number: str, carrier: SimCarrier) -> None:
         if self._closed:
@@ -355,12 +405,126 @@ class MainWindow(QMainWindow):
         active = self.sim_profiles.active_profile
         self.home_page.render_profile(active, current_sim=self.sim_profiles.current_sim,
                                       phone_number=self.sim_profiles.current_phone_number)
+        self.home_page.set_account_available(self._account_context_available())
         self.sims_page.render_profiles(
             self.sim_profiles.profiles, active, can_create=self.sim_profiles.can_create,
             current_sim=self.sim_profiles.current_sim,
             notice=self._profile_notice or self.sim_profiles.notice,
             current_phone_number=self.sim_profiles.current_phone_number,
         )
+        self._sync_background_views()
+
+    def _bound_account_view(self):
+        active = self.sim_profiles.active_profile if self.sim_profiles.current_sim else None
+        available = self._account_context_available()
+        state = active.account_state if available else AccountState(is_demo=self._demo)
+        context = (active.profile_id, self.sim_profiles.context_token) if available else None
+        return active, state, context
+
+    def _sync_background_views(self) -> None:
+        if self._closed:
+            return
+        _active, state, context = self._bound_account_view()
+        self.account_refresh_controller.observe(state, context)
+        self._render_tray_dashboard()
+
+    def _render_tray_dashboard(self) -> None:
+        if self._closed:
+            return
+        active, state, _context = self._bound_account_view()
+        scheduler = self.account_refresh_controller
+        can_refresh = self._account_context_available() and scheduler.can_refresh_now
+        self.tray_dashboard.render(
+            active, state, self._device_view, auto_refresh=scheduler.enabled,
+            can_refresh=can_refresh, schedule_status=scheduler.status_text,
+        )
+        self.home_page.account_refresh_button.setEnabled(can_refresh)
+        self.home_page.account_refresh_button.setToolTip(scheduler.status_text)
+
+    def _change_preferences(self, preferences) -> None:
+        if self._closed or type(preferences) is not AppPreferences:
+            return
+        self._preferences = preferences
+        self.account_refresh_controller.configure(preferences.auto_refresh, preferences.refresh_interval)
+        try:
+            saved = self._preferences_store.save(preferences) is True
+        except Exception:
+            saved = False
+        self.settings_page.set_preferences_notice("" if saved else PREFERENCES_SAVE_FAILURE)
+        self._render_tray_dashboard()
+
+    def show_main_window(self) -> None:
+        if self._closed:
+            return
+        self.tray_dashboard.hide_popup()
+        self.setWindowState(self.windowState() & ~Qt.WindowState.WindowMinimized)
+        self.show()
+        self.raise_()
+        self.activateWindow()
+
+    def _refresh_windows_startup(self) -> None:
+        available = enabled = failed = False
+        if self._windows_startup is not None:
+            try:
+                available = self._windows_startup.available is True
+                if available:
+                    enabled = self._windows_startup.is_enabled() is True
+                    failed = self._windows_startup.issue is True
+            except Exception:
+                failed = True
+        self.settings_page.set_startup_state(enabled, available, failed=failed)
+
+    def _change_windows_startup(self, enabled: bool) -> None:
+        if self._closed:
+            return
+        changed = False
+        try:
+            if self._windows_startup is not None and self._windows_startup.available is True:
+                changed = self._windows_startup.set_enabled(enabled) is True
+        except Exception:
+            pass
+        self._refresh_windows_startup()
+        if not changed:
+            self.settings_page.startup_notice_label.setText("Windows startup could not be updated. Try again.")
+
+    def request_exit(self) -> None:
+        self._exit_requested = True
+        self.close()
+
+    def _account_context_available(self) -> bool:
+        active = self.sim_profiles.active_profile
+        return (not self._closed and not self._account_context_failed
+                and self._account_service is not None and self.sim_profiles.current_sim
+                and active is not None and active.carrier is SimCarrier.DITO)
+
+    def start_account_refresh(self) -> bool:
+        """Manual Home/tray actions share the same authenticated request slot."""
+        return self.account_refresh_controller.request_now()
+
+    def _request_account_data(self) -> bool:
+        """Refresh the bound carrier account without refreshing router status."""
+        if not self._account_context_available():
+            return False
+        refresh = getattr(self._account_service, "refresh_account", None)
+        if not callable(refresh):
+            return False
+        try:
+            return refresh() is True
+        except Exception:
+            # Injected providers cannot publish private exception text via Qt.
+            self.home_page.account_notice.setText("Account refresh is unavailable. Try again.")
+            self.home_page.account_notice.show()
+            return False
+
+    def open_account_sign_in(self) -> bool:
+        """Reuse the existing official sign-in action for the active SIM account."""
+        if not self._account_context_available():
+            return False
+        controls = self.home_page.account_controls
+        if not controls.connect_button.isEnabled():
+            return False
+        controls.connect_button.click()
+        return True
 
     def start_refresh(self) -> bool:
         if self._sign_in_dialog is not None:
@@ -503,8 +667,12 @@ class MainWindow(QMainWindow):
     def shutdown(self) -> bool:
         """Cancel both independent reads before one shared bounded join budget."""
         self._closed = True
-        self.sims_page.account_controls.shutdown()
+        self.account_refresh_controller.shutdown()
+        self.tray_dashboard.shutdown()
+        self.home_page.account_controls.shutdown()
         self.sim_profiles.close()
+        self.home_page.render_profile(None)
+        self.home_page.set_account_available(False)
         if self._sign_in_dialog is not None:
             self._sign_in_dialog.reject()
         self.refresh_controller.cancel()
@@ -520,5 +688,18 @@ class MainWindow(QMainWindow):
         return status_stopped and messages_stopped
 
     def closeEvent(self, event: QCloseEvent) -> None:
+        if (not self._closed and not self._exit_requested and self._preferences.close_to_tray
+                and self.tray_dashboard.available):
+            if self.messages_page.details_dialog is not None:
+                self.messages_page.details_dialog.close()
+            self.tray_dashboard.hide_popup()
+            self.hide()
+            event.ignore()
+            return
         self.shutdown()
         event.accept()
+        if self._tray_owns_lifecycle:
+            from PySide6.QtWidgets import QApplication
+            application = QApplication.instance()
+            if application is not None:
+                application.quit()

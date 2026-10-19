@@ -1,0 +1,754 @@
+{
+  "https://doc.qt.io/qt-6.11/licenses-used-in-qt.html": {
+    "html_sha256": "c2cad0e2d2fc2e18a4a67dfe6f22d94c25be725f9a79cf9b4ceb41f101b14a5a",
+    "detail_text_sha256": "faf3ed6fee578c95c979533251eb6b41b6ddc8bc502e02044fca0a735ef36331"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-licensing.html": {
+    "html_sha256": "dc3fc4a73cce79c1070d9b5f752907e629ddb3f1b5b828103a01dbc9ab99d1e7",
+    "detail_text_sha256": "750a26a9698ec07cf37d6929dca7669347e2f45ba5cae153ce48a8e43f389f54"
+  },
+  "https://doc.qt.io/qt-6.11/qtcore-attribution-blake2.html": {
+    "html_sha256": "c15c5a2e7a8891002afaddc362e1ceaa8de667a112f33f8101d3dc5c2000512f",
+    "detail_text_sha256": "9014a2342af401e1e495ec556800a8d54e24611ef3278422fae607f66c6e9f5a"
+  },
+  "https://doc.qt.io/qt-6.11/qtcore-attribution-doubleconversion.html": {
+    "html_sha256": "8f278b0a3d0614bed2eff7f16401ebbe622389ee2a38acc93d717bcd44bade9d",
+    "detail_text_sha256": "8f9a7d4a5c6fea256e187c033a0931606062b093ed7ec42dfbc1ad1a7d5468ce"
+  },
+  "https://doc.qt.io/qt-6.11/qtcore-attribution-easing.html": {
+    "html_sha256": "81e738ad0c214d81d0ff3dc4b22478f882e64ccbd558c681f816514c6accef95",
+    "detail_text_sha256": "16b19366fc178812e11a7999eff0544b31a828ef5cc3841a0607c909838a43ab"
+  },
+  "https://doc.qt.io/qt-6.11/qtcore-attribution-forkfd.html": {
+    "html_sha256": "7cfcad8798f106495c8382a4359bc9a25f59dec2968aadb30d864cf98577bc6f",
+    "detail_text_sha256": "e686edd5b91f935b920e34cfc40a90b74bf8917276f426f9fec3bb5265453076"
+  },
+  "https://doc.qt.io/qt-6.11/qtcore-attribution-md4.html": {
+    "html_sha256": "3cd379a71461e002d7c55b682b87f7f29f782455d03fec5a256fa3cf7695f62b",
+    "detail_text_sha256": "5aa21789ff08973b0fa1d539c795ccd004d2bfb3d9e489b63cf4863e20b27dd4"
+  },
+  "https://doc.qt.io/qt-6.11/qtcore-attribution-md5.html": {
+    "html_sha256": "5bdfc509285f1fda24a20ae5eb51e0318dcf0b1d5450f3c72962178fec88fb55",
+    "detail_text_sha256": "9ecb1b1d6951080f5c23ae2917c3727c0825ef50d8f71d003cb18fbd4d0bf115"
+  },
+  "https://doc.qt.io/qt-6.11/qtcore-attribution-pcre2-sljit.html": {
+    "html_sha256": "e3366f79c9623202a311ec2a6a535f3b1be57415dfbe3a5622945a6e30d6df4a",
+    "detail_text_sha256": "22585e67c0cf220d03ff180bb5675e5b2ab1c459cb6645e63c0c656534bf992c"
+  },
+  "https://doc.qt.io/qt-6.11/qtcore-attribution-pcre2.html": {
+    "html_sha256": "879709e8fbdb8ab9491613b941eb5be2398f1215a4b1fdd21d3f0092dda9da53",
+    "detail_text_sha256": "9dffca1f7c2cbcabf3ce402edc45831eb49ad543de9c0fce9427d650eb14d688"
+  },
+  "https://doc.qt.io/qt-6.11/qtcore-attribution-qeventdispatcher-cf.html": {
+    "html_sha256": "9005ab8a6e81f57586b5e8c681d1f0ae18536056e4aaa142e90d99aa2fe6718a",
+    "detail_text_sha256": "4d47174082ec24cc3d31f4855e39a5ad73129dbbfd870a2dc66be0ad1f683239"
+  },
+  "https://doc.qt.io/qt-6.11/qtcore-attribution-rfc6234.html": {
+    "html_sha256": "70173325c5ac8e4a00601392b9f5ac5f568dbc226b99d3f6f4eb1be2eb17b134",
+    "detail_text_sha256": "1f13671f1e155831b0b9cbc1bcaedd11ddaff1146492017f21f9bb3cce496083"
+  },
+  "https://doc.qt.io/qt-6.11/qtcore-attribution-sha1.html": {
+    "html_sha256": "c3452a11083c2cab9816f9e89b80abebacd2f65118bde19a6215dbd741335152",
+    "detail_text_sha256": "bb3d6982295e2eaa4bd09cb473292d08a5ac14ef2b7aeb73d4b46cdddbf370c7"
+  },
+  "https://doc.qt.io/qt-6.11/qtcore-attribution-sha3-endian.html": {
+    "html_sha256": "9cdc8643aedd71c2c7ecc14cec0efbae9dedd340f9671565e8df90fef1e1ea67",
+    "detail_text_sha256": "f7403754ca38b7978de7629b37ae98ac2db44c8c4c90839dcf8e6e8a5dc6121c"
+  },
+  "https://doc.qt.io/qt-6.11/qtcore-attribution-sha3-keccak.html": {
+    "html_sha256": "e075c7dd7e3d4628b6da67afaea3a03861df87783bd3ea339aab2e6a441b2278",
+    "detail_text_sha256": "4e7080e84f261a5fffd9413b1f53abefdcaf39a29e6b007b004c499d7d2f6c5b"
+  },
+  "https://doc.qt.io/qt-6.11/qtcore-attribution-siphash.html": {
+    "html_sha256": "0f84aa28d13902be42d0afddc385456d47c81b75a3c3db530734170afe91991f",
+    "detail_text_sha256": "7f51179a6232cd101c2d934e62e5560a36ae4f1942d25f14302fc0aa996a6150"
+  },
+  "https://doc.qt.io/qt-6.11/qtcore-attribution-tika-mimetypes.html": {
+    "html_sha256": "cc970077733934085d59d9346644b3bccc2792096b109fabded44a5318f5a55a",
+    "detail_text_sha256": "1bab130d7da537507b317788643bcd8cb1680b238e7698e280b6623d196a1d69"
+  },
+  "https://doc.qt.io/qt-6.11/qtcore-attribution-tinycbor.html": {
+    "html_sha256": "76e9342674266d8cadc12b3a27831a929c0748f9fb627016896329353c9755d3",
+    "detail_text_sha256": "8ea8ee841d0fdfdedc3f8fd88b8afa0800ba2a6a671e009969a717f619ef68d9"
+  },
+  "https://doc.qt.io/qt-6.11/qtcore-attribution-tlexpected.html": {
+    "html_sha256": "5b10ad331f87c2c90c71fb27cc6830b8655106e3f75c8e07ea83a4229415e408",
+    "detail_text_sha256": "d8989f1f7fcc74dc0ddb5699129e893bee160099b002eaa7b9cf0246b7c13dc9"
+  },
+  "https://doc.qt.io/qt-6.11/qtcore-attribution-unicode-character-database.html": {
+    "html_sha256": "440a13bb53a807615d74ee710da9092f96518345a42df60ed1627dabe79a0e00",
+    "detail_text_sha256": "c928abc87b34b4e16ab7ae40e05aa5e6becf5079b5cf517b715d00c8806dfaa5"
+  },
+  "https://doc.qt.io/qt-6.11/qtcore-attribution-unicode-cldr.html": {
+    "html_sha256": "add84040ba01a848e4947edd9e1cb13992804467c1b7855edb651f538a608398",
+    "detail_text_sha256": "ca4a8da0de4b71c0bbc4cc6a70c554c2da408114d1d9c7dfb5a6a7ae1b95a713"
+  },
+  "https://doc.qt.io/qt-6.11/qtcore-attribution-zlib.html": {
+    "html_sha256": "f09f85986a6e80fc34a0076f5525ea8ead43cfcab497503c80d5d6a5343a001b",
+    "detail_text_sha256": "b270e1742ff091014157af99a8bc83b8dc5c5e1c44fd26ab1cc39ff9fa54aa35"
+  },
+  "https://doc.qt.io/qt-6.11/qtgui-attribution-aglfn.html": {
+    "html_sha256": "090a805cd5108a3bb90785b9b7f794c4b18d7ca10c200def97dc475b1e77b7a6",
+    "detail_text_sha256": "c5883521cf58d86f23bc580c955e7f86c967a45c3cca41cbb73b9fde2d03b624"
+  },
+  "https://doc.qt.io/qt-6.11/qtgui-attribution-android-native-style.html": {
+    "html_sha256": "7b0354a08ad300587ee7638fa0254ff0445c79539e44ece1e17ef0dea9c01911",
+    "detail_text_sha256": "6c601a1ddd4330a34ecf3e7cafe937b09ea7b35fa45654ec7a263256d8076404"
+  },
+  "https://doc.qt.io/qt-6.11/qtgui-attribution-cocoa-platform-plugin.html": {
+    "html_sha256": "43cf11cd33ef99aeefb093e2e79f354bc82a1cc7b3506b359abd3a9204dcf91d",
+    "detail_text_sha256": "a2a63d4ac86ce0f91d462c967de7a67802a95ad65c70a893860339f1f97cbea5"
+  },
+  "https://doc.qt.io/qt-6.11/qtgui-attribution-d3d12memoryallocator.html": {
+    "html_sha256": "b745228f1c57810541575d17af228a460cf74fc13d77e25c8db9f3bad24f0da6",
+    "detail_text_sha256": "9665ef7b3e10b20ccd37a2ea25549fd332c50db94111796d43d080c32666546f"
+  },
+  "https://doc.qt.io/qt-6.11/qtgui-attribution-dejayvu.html": {
+    "html_sha256": "a73b547586542bf7fa2248e3996b05c2598f659f9cded30e4acadb5273a5cc73",
+    "detail_text_sha256": "da6bc1dcd1641a3cbeed0ead8ab38268328c796c71d2376b39d27db26e1bc46b"
+  },
+  "https://doc.qt.io/qt-6.11/qtgui-attribution-emoji-segmenter.html": {
+    "html_sha256": "88d9ad1dafa942572491dc6b10bf2b03d51b821d6e4ad11974dcc95394cabadc",
+    "detail_text_sha256": "462cde8763aa145400be48b662601e49ab8d5ed53a31afe2642b8fef5b32f859"
+  },
+  "https://doc.qt.io/qt-6.11/qtgui-attribution-freetype-bdf.html": {
+    "html_sha256": "d208dd87b5b57587722abfabb045b18c871f671b966daabc449a038e7529a5ac",
+    "detail_text_sha256": "107919969d21119b30792e3c9fadc4cf0ba84195d8a481b762b01050d4b43303"
+  },
+  "https://doc.qt.io/qt-6.11/qtgui-attribution-freetype-pcf.html": {
+    "html_sha256": "0ba332fc4446962c247393201f0f1ec8ca5bcaf5adf3bf599ddb0b14f57531aa",
+    "detail_text_sha256": "7e8481468b8eae641a2329daa9744e75ebc1c15734720b9764a2207246a420bb"
+  },
+  "https://doc.qt.io/qt-6.11/qtgui-attribution-freetype-zlib.html": {
+    "html_sha256": "3d762e1143a721f65b207a1d5e4970cd145a2dbeffa1c0064759a96040dec900",
+    "detail_text_sha256": "e124cf502316b60af54ff07261c8120763ac0749d63d6f5da39274805770e94e"
+  },
+  "https://doc.qt.io/qt-6.11/qtgui-attribution-freetype.html": {
+    "html_sha256": "47d0068bf7ccc0044fa0af6dfa9718b2b494f4467604fa1202b8106a5febd8d0",
+    "detail_text_sha256": "57b7f184c456b4de86949c54705dd6a99837408abfb10af827925a1e335f9a31"
+  },
+  "https://doc.qt.io/qt-6.11/qtgui-attribution-grayraster.html": {
+    "html_sha256": "fa24f4b9586cbdd6889bb09e9a3145915d74b187fc4af5213b3b520d4c7f5588",
+    "detail_text_sha256": "ea6f7fa851b5f346052511f33e47f89294cd4fd1bc63af52c6b8a78e64d7b9e2"
+  },
+  "https://doc.qt.io/qt-6.11/qtgui-attribution-harfbuzz-ng.html": {
+    "html_sha256": "60c0117b6fb0bf0a50eed4b71ebc1f57629bf636ae9babd841c31be6df01c553",
+    "detail_text_sha256": "9d11daaf230d6d144d34db109ca14aa8fea4773c9f4e8d6559c49bd58748e577"
+  },
+  "https://doc.qt.io/qt-6.11/qtgui-attribution-icc-srgb-color-profile.html": {
+    "html_sha256": "3bf1d82ce29906d0a971f4dae45ae8b8bb2534ca948032e28f5858b3a785b6f4",
+    "detail_text_sha256": "edf3738e7b0d8e2326d9f338f72bf6a077478af04e584fbdebd6b08050f2e069"
+  },
+  "https://doc.qt.io/qt-6.11/qtgui-attribution-libjpeg.html": {
+    "html_sha256": "78e44d48db72f43bf844539d9be8f6993aea770bf2bb256463f7b90b736c1668",
+    "detail_text_sha256": "7e483ce62d956f7336872d33db17fb3ae84a3a9a474cb3ef0f98b61d276e20a3"
+  },
+  "https://doc.qt.io/qt-6.11/qtgui-attribution-libpng.html": {
+    "html_sha256": "08480b3d18f2ad46aa26ef2a5876b43a3242dcbeadb51ba39b9de690ce13a0d1",
+    "detail_text_sha256": "5fe397fda9a7c189a055ae2fab88507b669c869555e0e2baa2171a4ef71746bf"
+  },
+  "https://doc.qt.io/qt-6.11/qtgui-attribution-md4c.html": {
+    "html_sha256": "35b39b528b4c6597faad0c68c60a8c11c25404fa4659d3e5f22b5c92179c490e",
+    "detail_text_sha256": "b55828fdef184893e9f1927b0e715a806d3331aed9e5d378bec2a8edcbc751e7"
+  },
+  "https://doc.qt.io/qt-6.11/qtgui-attribution-opengl-es2-headers.html": {
+    "html_sha256": "0b6d7f5b9e11e3ef063cc7874279b333638163c01c6f40cd5c98eddce1178013",
+    "detail_text_sha256": "edb2e15944192a1e643754b52926076a6ef5bc90bff0c3e77eebe5a6e939fb59"
+  },
+  "https://doc.qt.io/qt-6.11/qtgui-attribution-opengl-headers.html": {
+    "html_sha256": "6b97a63879947ec9185756a30f54df9a8886bf86a46b10ccbe291cb99d8925bc",
+    "detail_text_sha256": "05a3b39198d4a829be79ff6c0e09705daebe7d3737b573f03459765583c94fef"
+  },
+  "https://doc.qt.io/qt-6.11/qtgui-attribution-pixman.html": {
+    "html_sha256": "f366f5361aabd425bb79add07d10feb16495a7511ae3b4c1751d24d23dfd93c0",
+    "detail_text_sha256": "a73fbf5f3342bbc4bfb644a1251fa846dc26ff413178bd7aa0024b6a0885fe3b"
+  },
+  "https://doc.qt.io/qt-6.11/qtgui-attribution-rhi-miniengine-d3d12-mipmap.html": {
+    "html_sha256": "858ae14cc9f8d1056ccf459c860c8f3e384c1f38d92a6cf04fe8473e7a2285e2",
+    "detail_text_sha256": "2665ed10521f70c71cde724be41eb491127b6a7ea972e5c1739232e490dc9c71"
+  },
+  "https://doc.qt.io/qt-6.11/qtgui-attribution-smooth-scaling-algorithm.html": {
+    "html_sha256": "0a4f3a5564f163fffa407f1ffaee8398e466d68c21b0e3f55f6dcdd493b08d0e",
+    "detail_text_sha256": "4cbdf9d6010472bf5820b640cebe36ea6ce7ac92ff8dda2366f5ae947dff4ae0"
+  },
+  "https://doc.qt.io/qt-6.11/qtgui-attribution-vulkan-xml-spec.html": {
+    "html_sha256": "1567670618ee88ee6653a1c1ebe7ad136fe6ee99542faae84022d762f34854da",
+    "detail_text_sha256": "c75ba70bf48bc344d1405123633eafc094c1564f4bd864f3988ae3b4073f53c5"
+  },
+  "https://doc.qt.io/qt-6.11/qtgui-attribution-vulkanmemoryallocator.html": {
+    "html_sha256": "ad5859b86279648b79efe3cecab89bcc528a2950800c39d33f52f3a3cd0fef71",
+    "detail_text_sha256": "e2130b9ccd0930193fa5277a1aec5bb6cdd62fa1cee484950f9a13b9c39da50a"
+  },
+  "https://doc.qt.io/qt-6.11/qtgui-attribution-webgradients.html": {
+    "html_sha256": "bef54bcbb1418256cc7a85f3f1a14126c65c8c00a4f6ae8eed7c7b296ee74155",
+    "detail_text_sha256": "b6b239c8a5a35760757a433686f3db5f3715c3ecb715a6ec3aedcc81fa07e328"
+  },
+  "https://doc.qt.io/qt-6.11/qtgui-attribution-wintab.html": {
+    "html_sha256": "f5c13a0fa2a4eaa15993c9f15c3c05623b60dddd7bfac67239b408697270d22a",
+    "detail_text_sha256": "db3947b54f09f6513c48a045db09c4c3cb55425e4f6c0291ff201296858404a6"
+  },
+  "https://doc.qt.io/qt-6.11/qtgui-attribution-xcb-xinput.html": {
+    "html_sha256": "b266935f105c1a16c12205175b9be6dc1fcf5d06768618523ad191028c64ab4d",
+    "detail_text_sha256": "15a5505a30c2ffd88b3db7affee8025ba3151d048d0251ff501debbc49611259"
+  },
+  "https://doc.qt.io/qt-6.11/qtgui-attribution-xserverhelper.html": {
+    "html_sha256": "7197851c5e017b574f0168a55532ed7b1a1d3743a52209d4e0948dc5f8ddc8c9",
+    "detail_text_sha256": "7a70d88fee3bc203192a39f6093a175e5ac27cebdc2549a08492362040e228dc"
+  },
+  "https://doc.qt.io/qt-6.11/qtimageformats-attribution-libtiff.html": {
+    "html_sha256": "99ee35115095573cf36147abbb1b968beb70aaf4ce684cb02fcaff5c2691e9a3",
+    "detail_text_sha256": "65f25100a98aec67d77bba35f86ce418b46f58c8d5abc20daff1b77e9bde8980"
+  },
+  "https://doc.qt.io/qt-6.11/qtimageformats-attribution-libwebp.html": {
+    "html_sha256": "1bbbe45609769041aab96b98538077c53d93ddbc113e0ca544b7bb1b1e036a25",
+    "detail_text_sha256": "bfd5d23d1d288fd0618b0a4ce4452fcd0c2d4417463cea0dbe3926db9ba6456a"
+  },
+  "https://doc.qt.io/qt-6.11/qtnetwork-attribution-libpsl.html": {
+    "html_sha256": "7fad81d9a5f2dd2f04f4e323f2a89d5d292dd100f53a44c2fb3f211dbc9d609b",
+    "detail_text_sha256": "689ff13473aecd929f2a4d44dbf993a76aa6bc3142c74d716871240f8bbdf96a"
+  },
+  "https://doc.qt.io/qt-6.11/qtnetwork-attribution-psl-data.html": {
+    "html_sha256": "83b681de0f730eeb762abf146189e80f61dbed3b1c70b2897bb4fc036d673af9",
+    "detail_text_sha256": "09d3808a4c09b92f5a9f76e5ede65a5d97e70bb31d986c6486068aef49ac8c4d"
+  },
+  "https://doc.qt.io/qt-6.11/qtpositioning-attribution-clip2tri.html": {
+    "html_sha256": "d5bd7ae35bffdf7aa23ecb9ef40af9bb8c7a0ae5af3da76af667c86721cecb6e",
+    "detail_text_sha256": "e3adf81b44306fdcc3b1ff73c354d18e70801f2e16b0953186bfa53739c60929"
+  },
+  "https://doc.qt.io/qt-6.11/qtpositioning-attribution-clipper.html": {
+    "html_sha256": "82021bf5396447da3b3d478826d40432a8da35f950a16d8b076df1f4c10a825d",
+    "detail_text_sha256": "77a6d3033283f916d7b48c56f4bb77d3a23fa2ccbccc66d764556b3c86ea5b66"
+  },
+  "https://doc.qt.io/qt-6.11/qtpositioning-attribution-poly2tri.html": {
+    "html_sha256": "716beaed9653f05a7bdd701cd40d421d790fa3c4b066ed3fd2bcf25c0499f232",
+    "detail_text_sha256": "9197e9c584e1d2c7cba186f222f825b2096fb00d069a38b12fbba40c15ed6eb8"
+  },
+  "https://doc.qt.io/qt-6.11/qtqml-attribution-masm.html": {
+    "html_sha256": "43b1232ec24f3f3f495d51023514c594b2a69acda8fd2b8079088bdb240df4d1",
+    "detail_text_sha256": "ae5196795d32599682893ace251ce25c026399e168b3c2cf56c9c2184311e91a"
+  },
+  "https://doc.qt.io/qt-6.11/qtquick-attribution-yoga.html": {
+    "html_sha256": "148767c27f7e2643b3a4f384fb9e43bc1655b7261a1dda001f7aa9dfc168ab03",
+    "detail_text_sha256": "9b3256984caa4577257aa9aa4aaa17109bfb0ac626b2f456f150b776cdb47b95"
+  },
+  "https://doc.qt.io/qt-6.11/qtquickcontrols-attribution-shadow-angular-material.html": {
+    "html_sha256": "dbcc00ea1fdae16cc38b78b745c8df6101868b0ec56c8506bc7ffe983f004d6e",
+    "detail_text_sha256": "f062d7e8435611208aa320d0c081848567da32b15f387ad531a2333a8c75ef33"
+  },
+  "https://doc.qt.io/qt-6.11/qtshadertools-attribution-glslang.html": {
+    "html_sha256": "c32c3f2a76d0ed959e619502c93359d45dae5db3ea253be1282e7548ee739c92",
+    "detail_text_sha256": "73f7b7cdf8414c8714837a34b1456ba7207583ee65f452d27e22028993bc6d97"
+  },
+  "https://doc.qt.io/qt-6.11/qtshadertools-attribution-spirvcross.html": {
+    "html_sha256": "30c56157ca50c30d7ed27470cf2791fab50e72f373fdfa3ddd8a424aa3ae0338",
+    "detail_text_sha256": "a5fadcd68c88c460141b4b8be91db4d596bd329b87caebeb25f9ed14c14fe4a6"
+  },
+  "https://doc.qt.io/qt-6.11/qtsvg-attribution-xsvg.html": {
+    "html_sha256": "237388ef1841f4b164ab9dbdf454f4b5ae65662071913bf4418afdb44710ea14",
+    "detail_text_sha256": "f0d18f2eb6595cf47d8fff6c80153fa6fc1a8bdaae4276a52551cb3ffcf1b6e1"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-abseil.html": {
+    "html_sha256": "2f3e26e89ea3a290e1d51863242981ddcc039ec678fd2bbe1213f9dfb69b773a",
+    "detail_text_sha256": "905d43ecbec3c70b2f89990aefa97a4e77115ae99a42b3abaeccec017d4aaf7b"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-acorn-a-tiny-fast-javascript-parser-written-in-javascript.html": {
+    "html_sha256": "2318c515b032aca58ff5683f939c2c7b885d2e4eb52bcf56e0e46000c868e9fd",
+    "detail_text_sha256": "7878bae116895db5c0000c3d69aa73bd2e2be48a11a5002be89be48c0e6f192a"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-alliance-for-open-media-video-codec.html": {
+    "html_sha256": "62bc8786e96653abd443370f1bcea49d4492b861774e291c5ffa1f1095566dc4",
+    "detail_text_sha256": "2b7aa17ecb73357d100306d0b379095693b80c2f2e117e911515b1300e0a294e"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-almost-native-graphics-layer-engine.html": {
+    "html_sha256": "53356e3676dc531bc4f38f3a1b4c9eaaec58f37db977636d5d97c3730331c00f",
+    "detail_text_sha256": "011fe31d413476e8f64abcfebe372e2c11cb73255b5bb93887018eeb87d7a8b9"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-android-explicit-synchronization.html": {
+    "html_sha256": "1c33bea225650c2ba181a6493226080ddaaf20ecac144cf9462c5ef611149a87",
+    "detail_text_sha256": "74d7503851c9b74f82339baf80a63fae2f99be8c517df354adcd221686b43cdb"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-boringssl.html": {
+    "html_sha256": "1f02c8c92f7d40bfc3d255cabf496be8d13a77372ed549f57286d08a9b7a8974",
+    "detail_text_sha256": "7a2b608c2b609d5df08ce151dec990bb53cdf89a8de628a5065a64d4f3903eb3"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-brotli.html": {
+    "html_sha256": "17075008539cd7545ae894fd216a3283b365953ddfd68ab0ceecd4ba4397fcc7",
+    "detail_text_sha256": "407de0ac46df74b79fceaed0bea5c8c957fd8c2e86600ac2c56fc161f7761b56"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-c-signal-slot-library.html": {
+    "html_sha256": "ad97dde70701060021f574891b1630232ece34fc9395d45c0881d8ff088a7b68",
+    "detail_text_sha256": "4379c18200232227b4a99f61a14ad414499aeb26f6df63645d893a8df4ee7686"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-chromium-global.html": {
+    "html_sha256": "b18e0775f61446ec6a831c56ab0329a2a8200d5dded4bcc7f5b57bfb1d5d5023",
+    "detail_text_sha256": "5c8ed91869e7fd5514de527eea52d99097528f0f1ac67ce1f1aefcf24645522e"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-cityhash.html": {
+    "html_sha256": "161bbfc64528744b83710301c1e1ffb99145bf93561f52ab2a333b350ad2dace",
+    "detail_text_sha256": "2c16359a9f4a8ec46bd60bf2c3b8fd3113ec55c7d7776260894f6411d72aca16"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-codemirror-5.html": {
+    "html_sha256": "e73ee4b0e87eac4d8b6970268d86695c7683a323b3ab9059758be06d38918f40",
+    "detail_text_sha256": "0aac9c78da4237ee2cdf53e65ffd5ecfb1c0b41952e1c74cf7a44c55372cc6d2"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-codemirror-6.html": {
+    "html_sha256": "b2d5966d131b034f80ba606a74b11633be8242b28bb0a2dfabd067770267b266",
+    "detail_text_sha256": "07998e116272f5eb1a9d4803f80e1062548bb97dd14ffea0bfd2dd80425e6340"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-compact-encoding-detection.html": {
+    "html_sha256": "aa1b640d6a9e585a5b98eb5e1fab44c8a4eedbbff3b2334127a177b9abc0baa1",
+    "detail_text_sha256": "74d7503851c9b74f82339baf80a63fae2f99be8c517df354adcd221686b43cdb"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-compact-language-detector-v3.html": {
+    "html_sha256": "80a877bcd235f84aabdf3e803a9e26b1ddc1be206b2367d6026d767b1faafa07",
+    "detail_text_sha256": "bfac4877817dd19474b27bc44c08d10ba0a496615da5396903bd53a391d63add"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-cpuinfo.html": {
+    "html_sha256": "6de9004de35f3d41d24c16c1c2af8ea46cb3a72a8b5253a86fa8a2ab174ef190",
+    "detail_text_sha256": "ea5f043e25835fcdf2b328809aee9b683ff44e7ae885abb711cf3d361f46d7f9"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-crashpad.html": {
+    "html_sha256": "1e4d9f45ff9efebb054c61ae2d6d5f410e254646c75bf16a8a280e0b2a8ae605",
+    "detail_text_sha256": "74d7503851c9b74f82339baf80a63fae2f99be8c517df354adcd221686b43cdb"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-crc32c.html": {
+    "html_sha256": "7298795a48113e5e753f771e51275058179e2893db94c829c13186f6d63a8159",
+    "detail_text_sha256": "9f1153847e401d5bc7b38228fe6400661ce57093b5b4089a5ef7f888261171e7"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-csp-evaluator-core-library-a-tool-that-allows-developers-to-check-if-a-content-security-policy-csp-serves-as-mitigation-against-xss-attacks.html": {
+    "html_sha256": "14800de84f6711c21e309a62dfdf37e66d7347a12a9a062583919e9b5e04d99e",
+    "detail_text_sha256": "74d7503851c9b74f82339baf80a63fae2f99be8c517df354adcd221686b43cdb"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-d3.html": {
+    "html_sha256": "076e2efdb2e4241d91ce035c82efd3dfa8d03259a94eeebf63f4c3e1576f1c02",
+    "detail_text_sha256": "8bfe68526193c29cb3796c8c122385b028646d7c2ed7dd5deb9ed6ea2867eb57"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-dav1d-is-an-av1-decoder.html": {
+    "html_sha256": "011adbe73f1f4519f875935713bcb938d9ea45d23ba3662b0fcfa38144ee8c99",
+    "detail_text_sha256": "d2896af7d1c253e0ceb0168fee7b990f343e74a237477379522cebeacbe23cf9"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-dawn.html": {
+    "html_sha256": "f628f3f45a428527dabe2d9d22f444736986fbac47b3b0f16587a152e094f1b7",
+    "detail_text_sha256": "7b08ee42719c7fe9ec0c17c588898bb8616195ccaf0a4c66eb8651f03ca062a7"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-devtools-frontend.html": {
+    "html_sha256": "9f0d9bcfc9d4b1d1f12833fa77cae19fd5c083d81da80ec34fef1f0fffd55761",
+    "detail_text_sha256": "8afc02bcddc89cde94c3c080ffa570ef105032f30215a498c84538f7c1ff0bc6"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-dragonbox.html": {
+    "html_sha256": "d9c02d82d6a0990afa5b7a2b9c55cab1868e7ee2baa85ce10809c20cd4a083d5",
+    "detail_text_sha256": "5cef46b5858683f04ef1082e5c4245ef549dce1828fc4a36549b5f8daaa9b489"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-emoji-segmenter.html": {
+    "html_sha256": "904145e08628d696ee57c0ff49ae16290defdef60091fa3ce3525fc0a5875d1e",
+    "detail_text_sha256": "74d7503851c9b74f82339baf80a63fae2f99be8c517df354adcd221686b43cdb"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-expat-xml-parser.html": {
+    "html_sha256": "bf17a8b73d97aeb8ff56e5936a2a805ca1ef7ee3167e42d82860808452a9beaf",
+    "detail_text_sha256": "70729443291772f4fa78e4ed10d2d3e09a41adfcdf0b1560674af7db3f9461a3"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-fast-float.html": {
+    "html_sha256": "f79e532d959fbacda7fda0eb3ee3e1acd52c6d4c5e6598563d0f0aea609e7ad2",
+    "detail_text_sha256": "31707f3a2e42cb7b47de134aba23c8bd0e479ebbe7b1610807e0fb44f28ecdf8"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-ffmpeg.html": {
+    "html_sha256": "9389d34d596d3a1e50e6a5b8981fe7d03ca2e34b5ae18c0f32941966a4e286b4",
+    "detail_text_sha256": "b12401375a306a56c88829bc5baa0f570de8c3db33d242334fb8d8c87a699175"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-fft.html": {
+    "html_sha256": "4ab3bd6ee9988e8aebe32878d174c54d2c33f83b4ece593b455199550186ed86",
+    "detail_text_sha256": "4ff4777d302b24165c1ffb3b00205a5decdbeecc78505861a4b9abb6a7e51123"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-fiat-crypto-synthesizing-correct-by-construction-code-for-cryptographic-primitives.html": {
+    "html_sha256": "b3ff72de57e23db2d1f5d3e1ead58fd463911f15a50f241e8dc5e79ff1b1a736",
+    "detail_text_sha256": "fe3d6e7fede5d815945ff387087b90d4ee06c992be1e5c8d7ec40527fe571db1"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-flac.html": {
+    "html_sha256": "a15654a87bd299d502a5254b0306b13270b7c81bd9694a9c4e327864420f7400",
+    "detail_text_sha256": "7e582b3256d8e841940d108783fdeaaa3851a71745dab8fffe666847b6394adb"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-flatbuffers.html": {
+    "html_sha256": "f437f1ea8c403baac6aa44dc84b07026b86daef7c5c8104e3f8e33c5dbea8d87",
+    "detail_text_sha256": "c0f8232ef500298f6ae0358915a160a7b256f50b0a6490d003abd8ac5d49aeb6"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-fontconfig.html": {
+    "html_sha256": "3e0f29bcf802c73e3be6136cdee358c4293e131eede96ed30d81be550d057aac",
+    "detail_text_sha256": "615f706b41c97ac9828fa3aa55dc88f7aaa8a6b03e5526ecf188b183677e59e2"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-fp16.html": {
+    "html_sha256": "bb47ddbc59645b81c55062b67391077872bde457b4c49e49f9186b207e5a077c",
+    "detail_text_sha256": "03ab4963f421a2e76fc2b8eb052d9c7b362b2300e65f525bc9df0260977d9310"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-general-purpose-fft-fast-fourier-cosine-sine-transform-package.html": {
+    "html_sha256": "0d9165fa0ae0df2593a5f748be125cbd61badc7475eda76e810b502c685efc69",
+    "detail_text_sha256": "bb69945518cffaed6b29f8261c871812efbe6158ace1fe81de73f93273026fd3"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-google-double-conversion.html": {
+    "html_sha256": "1e731f0d46c8e12d4e47273249160820669d1b9c79e4a889469662d2111aa7d0",
+    "detail_text_sha256": "58cc3f88400b768899fb5c0c3079ec7c7d14b51f416f5d80cc9287a911ac9900"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-google-glog-x27-s-symbolization-library.html": {
+    "html_sha256": "70ccfed1813be1c76fdfd1edac62edaaeeaad1a6a4e5a85fa6981dd0a652f6ad",
+    "detail_text_sha256": "fad487abfd6c5ce7a241e2bcde2d2a1a54fa67b5f1306773dde35eef20b393f0"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-harfbuzz.html": {
+    "html_sha256": "e9af3611b2e3a06d6f7293b67ae1177c256d23da621b7f50e3fa2f19dee4e6a8",
+    "detail_text_sha256": "35ccbf550d06247623eecd7ce960c5ef5d3a262b75ef6c0b52725bf0c0c95af3"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-headers-for-the-windows-10-webauthn-api-webauthn-dll.html": {
+    "html_sha256": "f40e67c843d5ff35e4a57fea1e524e5e3d7b863e06942af2d5a0a0fe87086ee9",
+    "detail_text_sha256": "e08a17ec67e982592b170436c166082c8f6ac5cae47d7d5ce07ce8d8bf27974c"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-highway-c-library-for-simd.html": {
+    "html_sha256": "7e6af93678ea636c5bf2df043f6362967b62ddf6f09102dea99e6945ccddc586",
+    "detail_text_sha256": "74d7503851c9b74f82339baf80a63fae2f99be8c517df354adcd221686b43cdb"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-hunspell.html": {
+    "html_sha256": "68aa2a66a3c5b8b9f958177e7af0c6a73cce17c3a2d6198ffc30f32824060a83",
+    "detail_text_sha256": "a839e73200dd08aa32d866ac8f91dc887c9d87d1964dd80d46377b21179820c4"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-icu.html": {
+    "html_sha256": "fc3f885c3af303fadb0e0e8f8f7b7758e2fd7f92ac9c54a51fe143064e9ce76e",
+    "detail_text_sha256": "2593c3d86826e09db484e4ecb60d45ad0f6192588fbff551df11b8672379b8a8"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-implementation-of-webdriver-bidi-standard.html": {
+    "html_sha256": "872d5ba4e178b96ba242d5ff1970c6c9e9f71b1f895ba4219252533d2f990366",
+    "detail_text_sha256": "74d7503851c9b74f82339baf80a63fae2f99be8c517df354adcd221686b43cdb"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-in-line-a-law-and-u-law-conversion-routines.html": {
+    "html_sha256": "1e68ebcf9fa4dcdac4dd4a4b4e811fb670d430b7b5049d9637e6c8aa7371b76f",
+    "detail_text_sha256": "60b77d0654a1eaaf319b09a130bea93e995a36b59ec4331abc2b3a9fa4a30b25"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-ink-stroke-modeler.html": {
+    "html_sha256": "d02590f55451d014add234315adfdcfdcd0b50fbb08165a3056c1d7f30b6afa8",
+    "detail_text_sha256": "74d7503851c9b74f82339baf80a63fae2f99be8c517df354adcd221686b43cdb"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-ink.html": {
+    "html_sha256": "7012057d07c937e69da0354fc91df94d89bbdf31e5ae4c0ab4703e441c9b8782",
+    "detail_text_sha256": "74d7503851c9b74f82339baf80a63fae2f99be8c517df354adcd221686b43cdb"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-inspector-protocol.html": {
+    "html_sha256": "85593bfc00e58dde0b9f088de1c1ec084869dff3e20882f7c4908186c68ed21a",
+    "detail_text_sha256": "367e11cc9497122ff6bcf25ed80d8265c3a34b2193af7fdf6a36c42001892c7f"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-intl-messageformat.html": {
+    "html_sha256": "a940439c41df5ca19bc344b7ec39fcf135e6c74f7d93a16cccbbd1dc42249e2c",
+    "detail_text_sha256": "e42d07e18fdb9be10c233835631e9400e6b6d67d83d48233ce35e90a055525d0"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-ipcz.html": {
+    "html_sha256": "d90199b48db90ef613d04cb711c3a7b84244ebe5e5f275ec7ecaecacc63930d4",
+    "detail_text_sha256": "f75d5ee42cc997f8173aebbbf6d4c2d4e61bc23dc28ac11dc14dd171ab134cf7"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-json5.html": {
+    "html_sha256": "27f2b3a75d1a3eef908319eb87239314781774b4465a4d381587608a4f9f6402",
+    "detail_text_sha256": "ba7dbaa2d67f28acd0673fdbb57fc1ec949613db46e2933b8fbf3795f16c36a3"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-jsoncpp.html": {
+    "html_sha256": "91eba0c389e1b4bffb7547dc7b95a56a3ff2a9924fdbb29a63b4bbf87b67f10f",
+    "detail_text_sha256": "31aee2e478076f54981ab7b226de18566a123b4d2b13a990bf884009d88a0d15"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-legacy-javascript.html": {
+    "html_sha256": "756025fb451b0c263272768493f0e381aa3667b4e1aaa660efa359ed3ff067b3",
+    "detail_text_sha256": "74d7503851c9b74f82339baf80a63fae2f99be8c517df354adcd221686b43cdb"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-leveldb-a-fast-persistent-key-value-store.html": {
+    "html_sha256": "2fdf87ac9b46c8ee5df752670500eb24beadd788204a2132464c383e6de7f6fc",
+    "detail_text_sha256": "ee6d2bd4875c590f6d021f312627e64f5ed419552592d6d8968a7e0e917d8ef6"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-libaddressinput.html": {
+    "html_sha256": "ed0368f8ee395ba681f5bb502136aeb1e29f29c188967535cb5bf76353261478",
+    "detail_text_sha256": "74d7503851c9b74f82339baf80a63fae2f99be8c517df354adcd221686b43cdb"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-libavif-library-for-encoding-and-decoding-avif-files.html": {
+    "html_sha256": "482daf4c726aee814b3b0f8c7452cf184021eaccc6a9dbdbc59e77fc6c2c3632",
+    "detail_text_sha256": "67880609317bcfbe0d857872c6674a0a15ca4e01bbaafc3f99d30e54da79da81"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-libgav1.html": {
+    "html_sha256": "6a0b7be43d40328149f6619a60e7cb5901873fc0a0ce5147186d3e4759573eb2",
+    "detail_text_sha256": "74d7503851c9b74f82339baf80a63fae2f99be8c517df354adcd221686b43cdb"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-libpng.html": {
+    "html_sha256": "23347e420370eff501fd44299d768de44fe5a5134e600b851c625e750c96715f",
+    "detail_text_sha256": "5d82e220b00996493355ae79bf2b1a7c9c1f5e73efdc9091c35a18d35bde7e61"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-libsrtp.html": {
+    "html_sha256": "5724350fc4b3ea060c461df85744cf08ffcab4742c55b1485114f5c580b63793",
+    "detail_text_sha256": "677ad4fe0d714aeaa6328460441451a64cd2086ac30445598111f6db5f300906"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-libtess2.html": {
+    "html_sha256": "18c9981f0cad07e49eb28a6e28826197d21bbd0055483228f7957fd7bb1d4bca",
+    "detail_text_sha256": "08fe45204eed795b777ba75caf37d6a2d6284b49d5eaae59090f875020701988"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-libvpx.html": {
+    "html_sha256": "3f7d2b866241bbb944769b10eb33f449da4d9c4a4d2e4aad786c7d69be3118ce",
+    "detail_text_sha256": "f02f38f2b0ec84029d98d65b6258201f9a2f1f863880ff2e49fd3ca5f7fc7efb"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-libxml.html": {
+    "html_sha256": "6f4c4409607591a4282060488efd0c26bdcad055ea81fc47181636f2d5285382",
+    "detail_text_sha256": "9db4df025ae60305115d2f88ec147d52792b68deae37ea2918931962cafbf795"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-libxslt.html": {
+    "html_sha256": "f3077595439aa28727027ff0b5dcf83e0249c53aa11393a48149b0566b2bae53",
+    "detail_text_sha256": "a79af99390c2bb81f6a59bf19a4a822db0a1cd00ed39ad5bc684a15d5e543ad8"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-libyuv.html": {
+    "html_sha256": "6a279fe3594ffbfe8a0f2dcc4fb304667ac79b3bb732de12c70e6d97e43817a6",
+    "detail_text_sha256": "039d7c7a23919ac5c62670f9c110601610b2768a38fb47cd554333daef75ab21"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-lighthouse-i18n-js.html": {
+    "html_sha256": "d0840602dad1820e9b9f41bd30d100fde94425bbd2c94913fc5814919660a89d",
+    "detail_text_sha256": "c0f8232ef500298f6ae0358915a160a7b256f50b0a6490d003abd8ac5d49aeb6"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-lighthouse.html": {
+    "html_sha256": "b21eda69b71deb8658d4fd78a91365d4c0840d09c8f5d7f5a9768c6e3d75ee78",
+    "detail_text_sha256": "c0f8232ef500298f6ae0358915a160a7b256f50b0a6490d003abd8ac5d49aeb6"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-lit.html": {
+    "html_sha256": "ffb80a7d637a1bf26b7b77b3d7930aa8a3c18d96179223ba200410e7476197bb",
+    "detail_text_sha256": "3cf2e5dea7eaca1f2d9e3a53ebb3f2291a7d7007386e464aa2b31c1a5f1800ab"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-lzma-sdk.html": {
+    "html_sha256": "f22d086e3a2643b4ff1bd756aaf85f6b43358d519a524dbd3869c8b39b7bb6aa",
+    "detail_text_sha256": "d82dd6307b390e23224e086d4d2b372cf4eaab6475b6b580d810ebc584fb8e32"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-marked.html": {
+    "html_sha256": "961b36c009b20d7db8d22f487ab2f7c35768ad5d9d250216b0faa4f13162cc46",
+    "detail_text_sha256": "4686a2a676ebf85460abe5fe45c3b5e82c4332e2f311469e243bd03f01663901"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-material-color-utilities.html": {
+    "html_sha256": "d0fd782b1123548d1c258f795f1742ceff295a2dc11a1bf62b6aad65d5a4d2d5",
+    "detail_text_sha256": "74d7503851c9b74f82339baf80a63fae2f99be8c517df354adcd221686b43cdb"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-metrics-protos.html": {
+    "html_sha256": "e0deb767f99cd6a683ff8a99b4821113210d0f1474bf3f770b58093d0d8d7a61",
+    "detail_text_sha256": "33f18576744602516888377600400f966634600b6d2aaa4002cb51419c49b519"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-minigbm.html": {
+    "html_sha256": "e92dd865c85f8733ce5e6d9fa53e5be67a7f7979494e9c9ca4050d090074cae6",
+    "detail_text_sha256": "f3925a866b6256bc8391774f937b1d187ba4f15e7957a3bc5190f310a3648041"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-mitt.html": {
+    "html_sha256": "8d992a8fb66453b57d6a1307f7341db1f185c12a3a9250b7e89ddc151c773928",
+    "detail_text_sha256": "1aeb6041431ba185fab30336c2b4607439cee3fee52db6749c70bd382d8c5872"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-modp-base64-decoder.html": {
+    "html_sha256": "b1ed70e16caaa86b618b87651c76ce17ef85cf4276b45be392b2871cec098e4a",
+    "detail_text_sha256": "abc49893cf795777764010277254dd2b21669689d6faa7d94b9897a71f6dc8ab"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-nvidia-control-x-extension-library.html": {
+    "html_sha256": "b816b5cea66790efc3c62edf541d261d9a37c121f28f2a18cab6a149aa142657",
+    "detail_text_sha256": "7d2ec2217cbcd78ef6600cd82a9af1c32b76f09fccce5f9d77df3f9af5ca2ff0"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-one-euro-filter.html": {
+    "html_sha256": "a3e37fe1ccd4f94e7c16a9be0305aaa37742458aaeb4e9a0306265485281203d",
+    "detail_text_sha256": "3289c0b52b62d9f82f24c5a95ebd77f1227f4b68825f38a94416a2a0898a1833"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-opus.html": {
+    "html_sha256": "3b9ecc3141b5ff189a1a9d07dd8445e09633fcdffd61ad914fefc66d7d31629f",
+    "detail_text_sha256": "22003e973f63278368ee532b061180ac3c0d3b755c1bb789909eb10cce017f89"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-ots-opentype-sanitizer.html": {
+    "html_sha256": "ea0959e44e3a7d00ad255cfce5970be72e9b3bceb3f579c61a753c8f83e9b5a2",
+    "detail_text_sha256": "979e91ac0d99c6fb3a079067d95e571f232060a25f57591e5531aa306151aca2"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-paul-hsieh-x27-s-superfasthash.html": {
+    "html_sha256": "f7f58aba801af279afe2fb505129a60044d64781ac5e67221e1a16538ce3603e",
+    "detail_text_sha256": "ab80b2434bd1b031788e7ac0a112314cdde9f75da60ef116a1b5929e7aa0c0b1"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-pdfium.html": {
+    "html_sha256": "c883f94be9979746c2287444e36e558c68b8aa7a178252dbdfe7b18c06166a03",
+    "detail_text_sha256": "73733ea6e30552c6d527d97de60920adb0a990e8fc3f5cdd6e70f221b4bef635"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-perfetto.html": {
+    "html_sha256": "435b733d563201a6bd9375bc9ee6fd5e70dede3983d54402225017e7b5b47acd",
+    "detail_text_sha256": "8bd09a8d02a2217302cdd5837a8d54f0d060a9b5dbb9e2001d0b3d9447507492"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-pffft-a-pretty-fast-fft.html": {
+    "html_sha256": "e6bc1ea15f45f2d55fdcf06e0b91186247a833ecaf1c06eddea8e96a25f50f68",
+    "detail_text_sha256": "11032d81618d595e7f44279b99ed8744bd3cd3cbf4f6e5ab4c009c868e61e6c6"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-polymer.html": {
+    "html_sha256": "48332ae7ae16a27d8ff0b9bce3dbb78bc1cbdd0a7631b846633ec53cae210c62",
+    "detail_text_sha256": "45281b4ae0964c66da80e2d5eab97b830faf033be55a1a1c55106a2d3bf36397"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-private-join-and-compute-subset.html": {
+    "html_sha256": "d5c09c56eb6c37af70ebac17f55f5214ab1284b408ef06b5c101ec8f3f20ba29",
+    "detail_text_sha256": "74d7503851c9b74f82339baf80a63fae2f99be8c517df354adcd221686b43cdb"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-protocol-buffers-javascript.html": {
+    "html_sha256": "59766af34ed8a85c53b51c75fda4d493ebafa8d4b0fddfb8bd99ec43de0cc903",
+    "detail_text_sha256": "8203a7dde39884672658ab91284193c117e818ee81314922e8bb45ea59179d27"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-protocol-buffers.html": {
+    "html_sha256": "23c6924b3dc0e818cf03b5487c59bff46d8c1679977ce8cf6e744266f8a7a12f",
+    "detail_text_sha256": "43e1d80a9e9d8614e5fc8ff54be4943436254f38b4227971a55484892984101d"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-puppeteer-core.html": {
+    "html_sha256": "7b27fb495f02780adb16f7ebf327c9e48d674350441b39a90fdc2e3d3af79d5b",
+    "detail_text_sha256": "e884e9a29508392980b50934784e812e39b016f33ae88c172be537e4912d6279"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-puppeteer-replay.html": {
+    "html_sha256": "6378d814ffd450bdff90fe0110527dd185659790f45967045f05ac9df6ed67f7",
+    "detail_text_sha256": "74d7503851c9b74f82339baf80a63fae2f99be8c517df354adcd221686b43cdb"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-quiche.html": {
+    "html_sha256": "fdc547a90ecda7b1be75788aa7cae8313f045eb99a58192078244906a0250bfa",
+    "detail_text_sha256": "59b90a4beb8ee0c07efef45a18b942d8d5efe62ca86a4b4a36c4cc6ba3f140aa"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-rapidhash.html": {
+    "html_sha256": "bfc6e3fa03f389306c4054381f2edf2cb3ca4d523ddd838a9d4f642ba53dd8e2",
+    "detail_text_sha256": "eea768e3f3a2e8f385d3913898c388fd22c24996175e791ac2156aa9dab4cc6b"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-re2-an-efficient-principled-regular-expression-library.html": {
+    "html_sha256": "67edc34c19b712283e62a4ac6f9c407a21ed283b805686a703cf23e572aca476",
+    "detail_text_sha256": "b0eb90d720e58491629f614c47c69c50bb16ccaa78ae6286c0e37f3de024c988"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-recurrent-neural-network-for-audio-noise-reduction.html": {
+    "html_sha256": "1d3214045c29b42a098909e0907a3dc37d31931f8b132e9d2cab7b36dcf9d6b4",
+    "detail_text_sha256": "2972251310facd93ba11189ae0628486fd75cafb2569e3ac8a2c7f75777cc3b4"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-search-engines-resources.html": {
+    "html_sha256": "9d4f3d8858c96dd1acdd0b6faf5477de972c6f57b5c4d06f6ed98f25cd3a3125",
+    "detail_text_sha256": "4fdfcd49f69347d6f7bb999ea8d2f5378c65470affd8264f79d4ad1561ba39ca"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-selenium-atoms.html": {
+    "html_sha256": "032f2bcc326798d6f48256d38be3218b42f50de88990cb862176d3a6868cd897",
+    "detail_text_sha256": "21d7f2be68ba642bdd494f7f518fd1caa32695f52df208f9559d1e49b123f9b9"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-simdutf-unicode-transcoder.html": {
+    "html_sha256": "63d15ff520874983241893c08cd47df89691f2f8716abecf7cae4520cab88889",
+    "detail_text_sha256": "aa30429985d1e5535b17f4bf57cdfb2d3ca758014c88e7c96b1151f4f2d8f3e8"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-sizzle.html": {
+    "html_sha256": "7fe41b8d8532f9ceef574f387dc40f6a5ec99cb33ff8eb6d9a64b3c037822051",
+    "detail_text_sha256": "e904a7f3fb37904446f808904aaa0ffcc10263f714a538f12da5a1a561fe9e53"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-snappy-a-fast-compressor-decompressor.html": {
+    "html_sha256": "c4b5fe4713bd28b78693d653f297fa79116cd2142f56b87b709e527eb4f73da2",
+    "detail_text_sha256": "ce1a1be3f3ad26fcddcdb358f16362a9582b059c89ef9c2c3cc476b59f78d5ed"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-source-map-scopes-codec.html": {
+    "html_sha256": "4f4e53b8272873456fa268a4703866d8aaae24c3f60dafdcea1301bb44299d4b",
+    "detail_text_sha256": "95e4ef2282ee85453bf56e4f261700abaf848ddad5fb378a91cdbfaeb1303fac"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-speech-dispatcher.html": {
+    "html_sha256": "6527a96407b324b515292d05240f98fb47fa548a6865a3e17dea97e68a2e355b",
+    "detail_text_sha256": "ee29eb4335c2bae085dee49f85cfef881c6a396d5cfe6c19094633b8e72de06f"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-spir-v-headers.html": {
+    "html_sha256": "ef2a2a36786298bc8881a2b7cbd6a51556c01a32455cd561bd2ea69c85608ad0",
+    "detail_text_sha256": "74d7503851c9b74f82339baf80a63fae2f99be8c517df354adcd221686b43cdb"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-spir-v-tools.html": {
+    "html_sha256": "6ff47af396525c5bf8a78b13e2d8bfa7525416945fd104016d9a233d2f6c9a13",
+    "detail_text_sha256": "74d7503851c9b74f82339baf80a63fae2f99be8c517df354adcd221686b43cdb"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-spl-sqrt-floor.html": {
+    "html_sha256": "a095c8215c03a7f5a19c427c346eaf04d9f6b76c43a50d9786910e0bf3106909",
+    "detail_text_sha256": "10780d54c6b459f78d84a384cffb485d27b1a428d9faa38243a70cbffa5d2deb"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-sqlite.html": {
+    "html_sha256": "f09fd78dde48e76ed8002e42d5dd2ae2db9d3f3343019e0da50b9e75fbab5af5",
+    "detail_text_sha256": "a75a615a96606239f5c9c137a7f922d7ea395b8783dd7d5ddbc04dbeb49f4e4a"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-the-chromium-project.html": {
+    "html_sha256": "69bf9c6fd939aa40bbf04997f7c8b0bf7a1c54f4e7697e75a40325aec04d58c9",
+    "detail_text_sha256": "4fdfcd49f69347d6f7bb999ea8d2f5378c65470affd8264f79d4ad1561ba39ca"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-the-diff-match-and-patch-libraries-offer-robust-algorithms-to-perform-the-operations-required-for-synchronizing-plain-text.html": {
+    "html_sha256": "99bc696a8fc19dd61560b57cd83eb47cfa4b14ab03f426750a9d789f3fb0c1e8",
+    "detail_text_sha256": "74d7503851c9b74f82339baf80a63fae2f99be8c517df354adcd221686b43cdb"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-the-itu-g-722-codec-encode-and-decode-part.html": {
+    "html_sha256": "4062500d83ae8f58225c024c1861d54efa0cbd98f3649731edb4bc9d5de743a3",
+    "detail_text_sha256": "6aa06fb7867d6ccaac8caba79288e8322efbe345a893dba58448904a4f7e1301"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-third-party-web.html": {
+    "html_sha256": "cef279a11d236c3725477e449e2ebafd938f80c31357e4e9faf20ed928b7c16a",
+    "detail_text_sha256": "ede887caf2e80e126644a7fc9020b51470e0386e968544825ef6f59cc8361490"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-uri-template-parser.html": {
+    "html_sha256": "ebbe1fc24398404a51c955f9dbc4a14e24747391716e611a712525800e1c431b",
+    "detail_text_sha256": "74d7503851c9b74f82339baf80a63fae2f99be8c517df354adcd221686b43cdb"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-url-pattern-library.html": {
+    "html_sha256": "3693e0a6a0366e381c0e1b97c995dd2efcd4aad7ac8e5b405a19f61591b6ac99",
+    "detail_text_sha256": "3ed9def8c9f33f8b7a8670b0e5b09c03295712fea3043df8b0b7a9ed0d48b2ea"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-v8-fork-of-fdlibm.html": {
+    "html_sha256": "33b7dfee897eac3e7fa3d3de63416c758e01e4d1dbc8dd41d1db90fc8ad68aa6",
+    "detail_text_sha256": "f259d9b09cac5b411c448b94db232ced806655ebac5d459bf29be319e0e81645"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-volk-meta-loader-for-vulkan-api.html": {
+    "html_sha256": "78d64b06f0ee844c7f40273a4df818816370ca32e8712dd693e21dc35441028e",
+    "detail_text_sha256": "f859b6fcfa4e05d169fc69f732f05221ddf6cd7ebce00c1fa32e8d98a10e1551"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-vscode-web-custom-data.html": {
+    "html_sha256": "41e0ffafc009632e2a73025cc96fe3d70b44636daf9f8c2eb901d75b5efc4e9b",
+    "detail_text_sha256": "2a298186ac68bb8645232066fb944d50a9a45e9168210a64e41977d64b5cbc96"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-vulkan-api-headers.html": {
+    "html_sha256": "b957a8bd35d63cc6929240914cf867f4a90cb804187febdaefe61e69fb6aff4f",
+    "detail_text_sha256": "74d7503851c9b74f82339baf80a63fae2f99be8c517df354adcd221686b43cdb"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-vulkan-loader-components.html": {
+    "html_sha256": "ec471cde781ab0a0aaaabf2cdb3e303a8c80d0f05e379c0e7efde155224dcd0e",
+    "detail_text_sha256": "b6c5904cfc0d6d8c468177497b6aa377b1b4a2a848e17481a19c66170f11f0f3"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-vulkanmemoryallocator.html": {
+    "html_sha256": "d915c42378187d266ab8fec9dfa4e75747aea2cabef60a1d41b3353d6a24e571",
+    "detail_text_sha256": "37a0dc9170f935c98f3254e29f4cb69798fdb27c68aa45ecef8f4f3ed368cd00"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-wasmparser.html": {
+    "html_sha256": "4e5a0ccb2abaf5c71bdf4b60ccd918fd40f99ad6ce5711838b4d30a9e0e7f483",
+    "detail_text_sha256": "4e91cdea7a1412a28c3d7f23238b1ff07c972981a1e38e951ad3f3d798e9dfe9"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-web-vitals.html": {
+    "html_sha256": "cef00523c0e229765df22ec124a5ff57e3f87a548fa6f6db98e58ee3c47cb1cd",
+    "detail_text_sha256": "9d51b55fffdae95cd3553ef53414863a5dfaa181cca77f25cba57ae503113e21"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-webkit.html": {
+    "html_sha256": "83cbbe47eb41ba29fa525be03089d7952496a1bc8fcbcb3839fef308ced95a60",
+    "detail_text_sha256": "9f609b5552d4c5e863efcbac8289aeded372bc315d6cb1f7ff438d65dd3c0e08"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-webm-container-parser-and-writer.html": {
+    "html_sha256": "6bb15e064aac35805866c346d41603eccd3107b684713f231a2bc9c5f1b32745",
+    "detail_text_sha256": "92b7836cf26684a13c648e38e16e232105af3957c252c6f51fb669d247ef6457"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-webp-image-encoder-decoder.html": {
+    "html_sha256": "fef7fbe0c9493956593b1a0ada4dda79530d2fcb096d4950b31c5754acbbd083",
+    "detail_text_sha256": "92b7836cf26684a13c648e38e16e232105af3957c252c6f51fb669d247ef6457"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-webrtc.html": {
+    "html_sha256": "c10fcd0f962e0ea301e0ae11d793f848d3187b48758dacec46285435917143da",
+    "detail_text_sha256": "094e2accf413926c49ccc082bb38babdfd5c31f9e36ddb50dd36b1e28a19cc73"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-wicked-good-xpath.html": {
+    "html_sha256": "65d85accea6708bf91444fe70a03fc0c8e5d5ad96ab72ae4535c0af6d640cb27",
+    "detail_text_sha256": "60cb27426bfaac345d9fe693664c4b3f7c5f295a7db722065c8523ef979e2c14"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-woff2.html": {
+    "html_sha256": "94a7cd1bb471d10f3c5a07d0a7e98a228ceedb662fe733a4687177f51fbc087d",
+    "detail_text_sha256": "07bfeb7813664bb1ba1d08932bfbe69a30abedd1457dd8c93e54dd1e707d4d4c"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-wuffs-wrangling-untrusted-file-formats-safely.html": {
+    "html_sha256": "2221b32e11f7a86b6eeb80525d15eabbac3f922212f9c77b58cc8b124898cef6",
+    "detail_text_sha256": "74d7503851c9b74f82339baf80a63fae2f99be8c517df354adcd221686b43cdb"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-xdg-user-dirs.html": {
+    "html_sha256": "1bd87cba7b729b773c3f2b5ecd748f7c97458417ba9ff3eafc1ecad2fea99a3c",
+    "detail_text_sha256": "1307cfe2b31811571513e8199fc3402030e4aca76575e2c32fd2e109f07d9062"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-zlib.html": {
+    "html_sha256": "ca20b58a64fa9cf040725be87650f23041efe50e7f0ada8b9e96cf63a758cba0",
+    "detail_text_sha256": "f320c82fca23c35c7845cbf668828a4e39fd2c8ad1c93b2c407de56bd3e9c625"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-zod.html": {
+    "html_sha256": "d2c8480102e3ed6a3272373750667bca9dfe3c85d58dd402ddc79c8137030b1f",
+    "detail_text_sha256": "c0e5c31dc8cfa5e25f36ff5be33e69870c827ec99b9c7b9cdd00ea00429ace01"
+  },
+  "https://doc.qt.io/qt-6.11/qtwebengine-3rdparty-zstandard.html": {
+    "html_sha256": "393ccc79c45162c4782abb269f5db22a2b25b58e11efa20102498a4b3c15d148",
+    "detail_text_sha256": "58fb0a0948d2607f376e8eb368c34cfab12b5b764d504fab853d7956dc4c3719"
+  }
+}

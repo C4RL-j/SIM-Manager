@@ -1,6 +1,7 @@
 """Synthetic SIM-first page checks; no router, vault, carrier or browser I/O."""
 
 from contextlib import ExitStack, redirect_stderr, redirect_stdout
+from dataclasses import replace
 import io
 import os
 import unittest
@@ -9,14 +10,14 @@ from unittest.mock import patch
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
 from PySide6.QtCore import QCoreApplication, QEvent, Qt
-from PySide6.QtWidgets import QLabel, QLineEdit, QPushButton, QScrollArea
+from PySide6.QtWidgets import QCheckBox, QComboBox, QLabel, QLineEdit, QPushButton, QScrollArea
 
 from sim_manager import app
-from sim_manager.account_models import AccountPhase, AccountState, SessionValidity
 from sim_manager.message_models import Message, MessageInbox
-from sim_manager.models import DeviceState, RadioState
+from sim_manager.models import ConnectionMode, ConnectionState, DeviceState, NetworkState, RadioState
 from sim_manager.services.presentation import present_device
 from sim_manager.sim_models import SimCarrier, SimProfile
+from sim_manager.ui.accounts import AccountControls
 from sim_manager.ui.icons import navigation_icon
 from sim_manager.ui.pages.history import HistoryPage
 from sim_manager.ui.pages.home import HomePage
@@ -42,40 +43,6 @@ def profile_b(*, name="Backup SIM", active=False):
                       identity_key="iccid-v1:" + "2" * 64, active=active)
 
 
-class SyntheticAccount:
-    is_demo = False
-
-    def __init__(self, state=None):
-        self.state = state or AccountState()
-        self.listener = None
-        self.calls = []
-
-    def set_listener(self, listener):
-        self.listener = listener
-        if listener is not None:
-            listener(self.state)
-
-    def connect(self):
-        self.calls.append("connect")
-        return False
-
-    def disconnect(self):
-        self.calls.append("disconnect")
-
-    def cancel(self):
-        self.calls.append("cancel")
-
-    def shutdown(self):
-        self.calls.append("shutdown")
-
-    def offer_otp(self, inbox):
-        self.calls.append("offer")
-
-    def otp_for_copy(self):
-        self.calls.append("copy")
-        return None
-
-
 class SimPageTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -97,7 +64,7 @@ class SimPageTests(unittest.TestCase):
 
     def clean_pages(self):
         for page in self.pages:
-            if isinstance(page, SimsPage):
+            if isinstance(page, HomePage):
                 page.account_controls.shutdown()
             page.close()
             page.deleteLater()
@@ -111,18 +78,26 @@ class SimPageTests(unittest.TestCase):
         self.application.processEvents()
         return page
 
-    def test_home_displays_full_profile_text_and_preserves_all_router_metrics(self):
+    def test_home_displays_profile_and_only_compact_connection_status(self):
         page = self.page(HomePage)
-        view = present_device(DeviceState(radio=RadioState(bands=(1, 3), rsrp=-91, rsrq=-10, rssi=-77, sinr=14)))
+        view = present_device(DeviceState(
+            network=NetworkState(connection_mode=ConnectionMode.LTE, connection=ConnectionState.CONNECTED),
+            radio=RadioState(bands=(1, 3), rsrp=-91, rsrq=-10, rssi=-77, sinr=14),
+        ))
         page.render(view)
         saved = profile_a(name="<b>Family SIM</b>")
         page.render_profile(saved, current_sim=True)
         self.assertEqual(page.profile_values["name"].text(), "<b>Family SIM</b>")
         self.assertEqual(page.profile_values["phone_number"].text(), PHONE_A)
         self.assertEqual(page.profile_values["carrier"].text(), "DITO")
+        self.assertEqual(set(page.values), {"network_status", "network_mode", "sim_state"})
         for key, label in page.values.items():
             self.assertEqual(label.text(), getattr(view, key))
-        self.assertTrue(any(label.text() == "Units unverified" for label in page.findChildren(QLabel)))
+        texts = {label.text() for label in page.findChildren(QLabel)}
+        for title in ("Router carrier", "RSRP", "SINR", "Reported bands", "WAN state", "PIN check", "Units unverified"):
+            self.assertNotIn(title, texts)
+        self.assertEqual(page.connection_title.text(), "LTE Connection reported")
+        self.assertEqual(page.network_badge.text(), "4G")
         for label in page.profile_values.values():
             self.assertEqual(label.textFormat(), Qt.TextFormat.PlainText)
 
@@ -137,6 +112,37 @@ class SimPageTests(unittest.TestCase):
         self.assertEqual(page.profile_values["name"].text(), "No active SIM")
         self.assertEqual(page.profile_values["phone_number"].text(), "Not provided")
 
+    def test_home_connection_row_uses_network_and_sim_evidence_without_signal_claims(self):
+        page = self.page(HomePage)
+        view = present_device(DeviceState())
+        page.render(replace(view, network_status="Disconnected", network_mode="LTE", sim_state="Not Ready",
+                            router_status="Status available"))
+        self.assertEqual(page.values["network_status"].text(), "Disconnected")
+        self.assertEqual(page.values["sim_state"].text(), "Not Ready")
+        self.assertEqual(page.connection_strip.property("level"), "error")
+        self.assertEqual(page.connection_title.text(), "LTE Disconnected")
+        self.assertEqual(page.connection_image.property("level"), "error")
+        page.render(replace(view, network_status="Connected", network_mode="LTE", sim_state="Not Ready",
+                            router_status="Status available"))
+        self.assertEqual(page.connection_title.text(), "SIM not ready")
+        self.assertNotIn("Connected", page.profile_status.text())
+        self.assertEqual(page.profile_status.property("level"), "warning")
+        page.render(replace(view, network_status="Connected", network_mode="NR5G", sim_state="Ready",
+                            router_status="Status available"))
+        self.assertEqual(page.connection_title.text(), "NR5G Connected")
+        self.assertEqual(page.connection_subtitle.text(), "Router online · SIM ready")
+        self.assertEqual(page.network_badge.text(), "5G")
+        page.render(replace(view, network_status="Status available", router_status="Connected"))
+        self.assertEqual(page.values["network_status"].text(), "Unknown")
+        self.assertEqual(page.connection_strip.property("level"), "info")
+        self.assertEqual(page.network_badge.text(), "—")
+        self.assertNotIn("Router online", page.connection_subtitle.text())
+        for key, label in page.values.items():
+            self.assertTrue(label.accessibleName())
+            self.assertEqual(label.textFormat(), Qt.TextFormat.PlainText)
+        self.assertIn("SIM: Unknown", page.connection_title.accessibleDescription())
+        self.assertIn("no signal strength", page.connection_image.accessibleDescription())
+
     def test_home_quick_messages_action_emits_only_navigation_request(self):
         page = self.page(HomePage)
         requests = []
@@ -144,38 +150,38 @@ class SimPageTests(unittest.TestCase):
         page.messages_button.click()
         self.assertEqual(requests, [True])
 
-    def test_sims_auto_selects_active_and_browsing_other_profile_retains_otp_session(self):
-        account = SyntheticAccount(AccountState(phase=AccountPhase.CONNECTING, otp_available=True))
-        page = self.page(SimsPage, account)
+    def test_sims_auto_selects_active_and_browsing_only_updates_profile_details(self):
+        page = self.page(SimsPage)
         active, other = profile_a(), profile_b()
         page.render_profiles((other, active), active, can_create=False, current_sim=True)
-        page.account_controls.set_context(True)
         self.assertEqual(page.selected_profile.profile_id, ID_A)
-        self.assertFalse(page.account_controls.isHidden())
         self.assertIn("Active", page.profile_list.item(1).text())
-        state = account.state
+        self.assertEqual(page.profile_state_label.text(), "Active · Inserted SIM")
         page.profile_list.setCurrentRow(0)
-        self.assertTrue(page.account_controls.isHidden())
+        self.assertEqual(page.selected_profile.profile_id, ID_B)
         self.assertEqual(page.profile_number_label.text(), PHONE_B)
-        self.assertIs(account.state, state)
-        self.assertTrue(account.state.otp_available)
-        self.assertTrue(page.account_controls.otp_copy_button.isEnabled())
-        self.assertEqual(account.calls, [])
+        self.assertEqual(page.profile_state_label.text(), "Saved profile · SIM not active")
+        self.assertIn("Active", page.profile_list.item(1).text())
+        self.assertFalse(hasattr(page, "account_controls"))
+        self.assertEqual(page.findChildren(AccountControls), [])
 
-    def test_unknown_or_inactive_profile_has_no_visible_account_controls(self):
-        account = SyntheticAccount(AccountState(phase=AccountPhase.CONNECTED, validity=SessionValidity.VALIDATED))
-        page = self.page(SimsPage, account)
+    def test_sims_profiles_never_construct_account_controls_or_connect_action(self):
+        page = self.page(SimsPage)
         unknown = profile_a(carrier=SimCarrier.UNKNOWN)
         page.render_profiles((unknown,), unknown, can_create=False, current_sim=True)
-        self.assertTrue(page.account_controls.isHidden())
+        self.assertEqual(page.profile_carrier_label.text(), "Unknown")
+        self.assertEqual(page.profile_state_label.text(), "Active · Inserted SIM")
         active = profile_a()
         page.render_profiles((active,), active, can_create=False, current_sim=False)
-        self.assertTrue(page.account_controls.isHidden())
-        self.assertEqual(account.calls, [])
+        self.assertEqual(page.profile_carrier_label.text(), "DITO")
+        self.assertEqual(page.profile_state_label.text(), "Saved profile · SIM not active")
+        self.assertFalse(hasattr(page, "account_controls"))
+        self.assertEqual(page.findChildren(AccountControls), [])
+        self.assertEqual({button.text() for button in page.findChildren(QPushButton)},
+                         {"Rename", "Create profile"})
 
     def test_create_offer_is_optional_and_actual_combo_emits_dito_enum(self):
-        account = SyntheticAccount()
-        page = self.page(SimsPage, account)
+        page = self.page(SimsPage)
         page.render_profiles((), None, can_create=True, current_sim=True, current_phone_number=PHONE_A)
         self.assertFalse(page.create_card.isHidden())
         self.assertEqual(page.create_name_input.text(), "")
@@ -190,7 +196,6 @@ class SimPageTests(unittest.TestCase):
         page.create_button.click()
         self.assertEqual(requests, [("Fixture DITO SIM", PHONE_A, SimCarrier.DITO)])
         self.assertIs(requests[0][2], SimCarrier.DITO)
-        self.assertEqual(account.calls, [])
         self.assertTrue(all(field.echoMode() == QLineEdit.EchoMode.Normal for field in page.findChildren(QLineEdit)))
 
     def test_repeated_snapshots_preserve_creation_edits_and_real_context_reset_prefills_new_number(self):
@@ -207,8 +212,7 @@ class SimPageTests(unittest.TestCase):
         self.assertEqual(page.create_phone_input.text(), PHONE_A)
 
     def test_rename_inactive_profile_emits_stable_id_without_activation_or_number_change(self):
-        account = SyntheticAccount()
-        page = self.page(SimsPage, account)
+        page = self.page(SimsPage)
         active, other = profile_a(), profile_b()
         page.render_profiles((active, other), active, can_create=False, current_sim=True)
         page.profile_list.setCurrentRow(1)
@@ -220,7 +224,6 @@ class SimPageTests(unittest.TestCase):
         self.assertEqual(other.name, "Backup SIM")
         self.assertEqual(other.phone_number, PHONE_B)
         self.assertEqual(active.profile_id, ID_A)
-        self.assertEqual(account.calls, [])
 
     def test_profile_refresh_preserves_selected_row_and_in_progress_rename(self):
         page = self.page(SimsPage)
@@ -258,11 +261,19 @@ class SimPageTests(unittest.TestCase):
         self.assertIn(PHONE_A, page.sim_context_label.text())
         page.render(MessageInbox(messages=(Message(sender="Synthetic sender", body="Synthetic previous SIM content"),)))
         self.assertTrue(page.loaded)
+        self.assertIsNotNone(page.last_refreshed_at)
+        page.open_selected_message()
+        details = page.details_dialog
+        self.assertEqual(details.content_view.toPlainText(), "Synthetic previous SIM content")
+        cleared = []
+        details.finished.connect(lambda: cleared.append(details.content_view.toPlainText() == ""))
         page.reset_inbox()
         page.set_sim_context(None, current_sim=True)
         self.assertFalse(page.loaded)
         self.assertEqual(page.message_list.count(), 0)
-        self.assertEqual(page.content_view.toPlainText(), "")
+        self.assertIsNone(page.details_dialog)
+        self.assertIsNone(page.last_refreshed_at)
+        self.assertEqual(cleared, [True])
         self.assertEqual(page.empty_label.text(), "No messages loaded")
         self.assertNotIn("1 message", page.status_label.text())
         self.assertNotIn(PHONE_A, page.sim_context_label.text())
@@ -271,9 +282,20 @@ class SimPageTests(unittest.TestCase):
         page = self.page(SettingsPage, router_address="https://192.168.1.1")
         self.assertFalse(hasattr(page, "account_controls"))
         self.assertEqual(page.router_address_label.text(), "https://192.168.1.1")
-        self.assertEqual(set(page.findChildren(QPushButton)), {page.forget_login_button})
+        self.assertEqual(set(page.findChildren(QPushButton)), {
+            page.forget_login_button, page.connection_details_toggle,
+        })
+        self.assertEqual(set(page.findChildren(QCheckBox)), {
+            page.auto_refresh_toggle, page.close_to_tray_toggle, page.start_with_windows_toggle,
+        })
+        self.assertEqual(page.findChildren(QComboBox), [page.refresh_interval_combo])
+        self.assertTrue(page.auto_refresh_toggle.isChecked())
+        self.assertTrue(page.close_to_tray_toggle.isChecked())
+        self.assertEqual(page.refresh_interval_combo.currentData(), 30)
+        self.assertEqual(page.findChildren(AccountControls), [])
+        self.assertFalse({button.text() for button in page.findChildren(QPushButton)}
+                         & {"Connect DITO", "Show sign-in", "Disconnect", "Copy OTP"})
         self.assertEqual(page.findChildren(QLineEdit), [])
-        self.assertFalse(any("DITO" in label.text() for label in page.findChildren(QLabel)))
 
     def test_history_is_placeholder_without_collecting_or_mutating_controls(self):
         page = self.page(HistoryPage)

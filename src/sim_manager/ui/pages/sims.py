@@ -6,9 +6,7 @@ from PySide6.QtWidgets import (
     QListWidget, QListWidgetItem, QPushButton, QSizePolicy, QVBoxLayout, QWidget,
 )
 
-from sim_manager.services.accounts import AccountService
 from sim_manager.sim_models import SimCarrier, SimProfile
-from sim_manager.ui.accounts import AccountControls
 
 
 def _text_label(text: str = "", *, muted: bool = False) -> QLabel:
@@ -39,7 +37,7 @@ class SimsPage(QWidget):
     create_requested = Signal(str, str, object)
     rename_requested = Signal(str, str)
 
-    def __init__(self, account_service: AccountService | None = None, *, demo: bool = False, parent=None) -> None:
+    def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self._profiles: tuple[SimProfile, ...] = ()
         self._active_profile: SimProfile | None = None
@@ -91,9 +89,6 @@ class SimsPage(QWidget):
         rename.addWidget(self.rename_button)
         details.addLayout(rename)
         layout.addWidget(self.profile_card)
-        self.account_controls = AccountControls(account_service, demo=demo)
-        self.account_controls.hide()
-        layout.addWidget(self.account_controls)
         self.create_card, creation = _card("Name this SIM")
         creation.addWidget(_text_label("This SIM has no saved profile. Add one when you are ready.", muted=True))
         create_form = QFormLayout()
@@ -192,7 +187,6 @@ class SimsPage(QWidget):
         self.rename_name_input.setEnabled(selected is not None)
         active = (selected is not None and self._active_profile is not None and self._current_sim
                   and selected.profile_id == self._active_profile.profile_id)
-        self.account_controls.setVisible(active and self._active_profile.carrier is SimCarrier.DITO)
         if selected is None:
             for label in (self.profile_name_label, self.profile_number_label, self.profile_carrier_label, self.profile_state_label):
                 label.clear()

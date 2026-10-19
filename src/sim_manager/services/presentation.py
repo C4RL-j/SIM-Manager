@@ -1,10 +1,12 @@
-"""Privacy-safe desktop strings from normalized device state only."""
+"""Desktop display strings from normalized device and account values."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 import math
+import re
 
+from sim_manager.account_models import AccountData
 from sim_manager.devices.d2.status_parser import SOURCE_KEYS
 from sim_manager.models import (
     Availability, ConnectionMode, ConnectionState, DeviceIssue, DeviceState,
@@ -74,6 +76,40 @@ def _address(value: object) -> str:
     return "Unknown"
 
 
+_DATA_QUANTITY = re.compile(
+    r"-?(?:[0-9]{1,16}|[0-9]{1,3}(?:,[0-9]{3})+)(?:\.[0-9]{1,8})? "
+    r"(?:B|[KMGTPEZY]B|[KMGTPEZY]iB|kB)\Z"
+)
+
+
+def present_promo_expiry(data: AccountData | None) -> str:
+    """Preserve reported promo/data-bucket dates without selecting a total.
+
+    AccountData.expiry describes the load balance and is never a promo date.
+    Unclassified and unlimited buckets lack data-unit evidence, so their names
+    cannot establish that an expiry belongs to a data allowance.
+    """
+    if not isinstance(data, AccountData):
+        return "Not available"
+    if any(promo.expiry is not None for promo in data.active_promos):
+        if len(data.active_promos) == 1:
+            return data.active_promos[0].expiry
+        return "\n".join(
+            f"{promo.name}: {promo.expiry or 'Not available'}"
+            for promo in data.active_promos
+        )
+    buckets = tuple(
+        bucket for bucket in data.data_buckets
+        if type(bucket.remaining) is str and _DATA_QUANTITY.fullmatch(bucket.remaining)
+    )
+    if not any(bucket.expiry is not None for bucket in buckets):
+        return "Not available"
+    return "\n".join(
+        f"{bucket.name}: {bucket.expiry or 'Not available'}"
+        for bucket in buckets
+    )
+
+
 def present_device(state: DeviceState) -> DeviceView:
     """Emit fixed literals and bounded numbers, never arbitrary model text.
 
@@ -99,6 +135,17 @@ def present_device(state: DeviceState) -> DeviceView:
         pin = "Off"
     elif sim.pin_check_enabled is True:
         pin = "On"
+
+    sim_state = "Unknown"
+    if sim.present is False or (
+        type(sim.pin_state) is PinState
+        and sim.pin_state in (PinState.PIN_REQUIRED, PinState.PUK_REQUIRED)
+    ):
+        sim_state = "Not Ready"
+    elif (type(sim.readiness) is Readiness and sim.readiness is Readiness.READY
+          and (sim.present is None or sim.present is True)
+          and type(sim.pin_state) is PinState):
+        sim_state = "Ready"
 
     sources = state.successful_sources
     valid_sources = (
@@ -148,7 +195,7 @@ def present_device(state: DeviceState) -> DeviceView:
         router_status = "Router status unavailable"
 
     return DeviceView(
-        sim_state="Ready" if type(sim.readiness) is Readiness and sim.readiness is Readiness.READY else "Unknown",
+        sim_state=sim_state,
         pin=pin,
         network_mode="LTE" if type(network.connection_mode) is ConnectionMode and network.connection_mode is ConnectionMode.LTE else "Unknown",
         network_status=_connection(network.connection),

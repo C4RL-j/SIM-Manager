@@ -1,7 +1,7 @@
 """Compact account controls consuming only normalized service state."""
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import QApplication, QFrame, QHBoxLayout, QLabel, QPushButton, QVBoxLayout
+from PySide6.QtWidgets import QApplication, QFrame, QHBoxLayout, QLabel, QPushButton, QSizePolicy, QVBoxLayout
 
 from sim_manager.account_models import AccountIssue, AccountPhase, AccountState
 from sim_manager.services.accounts import AccountService
@@ -18,26 +18,34 @@ class AccountControls(QFrame):
         self._closed = False
         self._context_enabled = True
         self._copied_otp: str | None = None
-        self.setObjectName("card")
+        self.setObjectName("homeAccountPrompt")
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(18, 16, 18, 18)
-        layout.setSpacing(10)
-        heading = QLabel("DITO Account")
-        heading.setObjectName("cardTitle")
-        layout.addWidget(heading)
+        layout.setContentsMargins(22, 18, 22, 18)
+        layout.setSpacing(12)
+        heading = QHBoxLayout()
+        title = QLabel("MyDITO Account")
+        title.setObjectName("homeAccountTitle")
+        heading.addWidget(title, 1)
         self.status_label = QLabel("Not connected")
+        self.status_label.setObjectName("homeAccountStatus")
         self.status_label.setTextFormat(Qt.TextFormat.PlainText)
-        layout.addWidget(self.status_label)
-        self.detail_label = QLabel("Session stays in memory. Sign in again after restarting.")
+        self.status_label.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
+        heading.addWidget(self.status_label)
+        layout.addLayout(heading)
+        self.detail_label = QLabel()
         self.detail_label.setTextFormat(Qt.TextFormat.PlainText)
         self.detail_label.setWordWrap(True)
-        self.detail_label.setObjectName("muted")
+        self.detail_label.setObjectName("homeAccountDescription")
+        self.detail_label.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         layout.addWidget(self.detail_label)
-        actions = QHBoxLayout()
         self.connect_button = QPushButton("Connect DITO")
+        self.connect_button.setObjectName("homeConnectAction")
+        layout.addWidget(self.connect_button)
+        actions = QHBoxLayout()
         self.disconnect_button = QPushButton("Disconnect")
+        self.disconnect_button.setObjectName("homeAction")
         self.otp_copy_button = QPushButton("Copy OTP")
-        actions.addWidget(self.connect_button)
+        self.otp_copy_button.setObjectName("homeAction")
         actions.addWidget(self.disconnect_button)
         actions.addWidget(self.otp_copy_button)
         actions.addStretch()
@@ -45,7 +53,7 @@ class AccountControls(QFrame):
         self.otp_label = QLabel()
         self.otp_label.setWordWrap(True)
         self.otp_label.setTextFormat(Qt.TextFormat.PlainText)
-        self.otp_label.setObjectName("muted")
+        self.otp_label.setObjectName("homeAccountDescription")
         layout.addWidget(self.otp_label)
         self.state_changed.connect(self._render_service_state)
         self.connect_button.clicked.connect(self._connect)
@@ -86,7 +94,7 @@ class AccountControls(QFrame):
             AccountIssue.UNSUPPORTED_RESPONSE: "This DITO login response is not supported yet.",
             AccountIssue.EXPIRED: "Connect again to sign in with DITO.",
         }
-        detail = details.get(state.issue, "Session stays in memory. Sign in again after restarting.")
+        detail = details.get(state.issue, "Connect your MyDITO account to view your data balance, load and promos.")
         if self._demo:
             detail = "DEMO account state. No DITO connection or credentials."
         elif phase == AccountPhase.CONNECTING and state.issue is None:
@@ -94,10 +102,18 @@ class AccountControls(QFrame):
         elif phase == AccountPhase.CONNECTED:
             detail = "Sign-in verified. Disconnect clears this app's isolated session."
         self.detail_label.setText(detail)
+        level = {
+            AccountPhase.CONNECTED: "ok", AccountPhase.CONNECTING: "warning",
+            AccountPhase.EXPIRED: "warning", AccountPhase.ERROR: "error",
+        }.get(phase, "info")
+        self.status_label.setProperty("level", level)
+        self.status_label.style().unpolish(self.status_label)
+        self.status_label.style().polish(self.status_label)
         self.connect_button.setText("Show sign-in" if phase == AccountPhase.CONNECTING else "Connect DITO")
         self.connect_button.setEnabled(self._context_enabled and self._service is not None and phase != AccountPhase.CONNECTED)
         self.disconnect_button.setText("Cancel" if phase == AccountPhase.CONNECTING else "Disconnect")
         self.disconnect_button.setEnabled(self._context_enabled and phase in (AccountPhase.CONNECTING, AccountPhase.CONNECTED))
+        self.disconnect_button.setVisible(self._context_enabled and phase in (AccountPhase.CONNECTING, AccountPhase.CONNECTED))
         available = self._context_enabled and phase == AccountPhase.CONNECTING and state.otp_available is True
         self.otp_copy_button.setVisible(available)
         self.otp_copy_button.setEnabled(available)

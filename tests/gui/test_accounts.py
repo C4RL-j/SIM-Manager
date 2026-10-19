@@ -39,7 +39,6 @@ class AccountGuiTests(DesktopCase):
         self.windows.append(window)
         window.show()
         window.render_snapshot(snapshot)
-        window.navigation.setCurrentRow(1)
         return window
 
     def connected_service(self):
@@ -50,7 +49,10 @@ class AccountGuiTests(DesktopCase):
     def test_connect_success_disconnect_and_fresh_sign_in_states(self):
         service, browser = self.connected_service()
         window = self.account_window(service=service)
-        controls = window.sims_page.account_controls
+        controls = window.home_page.account_controls
+        self.assertEqual(window.navigation.currentRow(), 0)
+        self.assertTrue(controls.isVisible())
+        self.assertTrue(controls.connect_button.isVisible())
         self.assertEqual(controls.status_label.text(), "Not connected")
         self.assertEqual(browser.opened, 0)
         self.assertFalse(controls.disconnect_button.isEnabled())
@@ -64,18 +66,23 @@ class AccountGuiTests(DesktopCase):
         browser.callback(AuthEvent.AUTHENTICATED)
         self.assertEqual(controls.status_label.text(), "Connected")
         self.assertFalse(controls.connect_button.isEnabled())
-        controls.disconnect_button.click()
+        self.assertTrue(controls.isHidden())
+        self.assertTrue(window.home_page.account_disconnect_button.isVisible())
+        window.home_page.account_disconnect_button.click()
         self.assertTrue(browser.closed)
         self.assertEqual(controls.status_label.text(), "Not connected")
+        self.assertTrue(controls.connect_button.isVisible())
+        self.assertTrue(window.home_page.account_disconnect_button.isHidden())
 
     def test_expired_session_offers_explicit_reconnect(self):
         service, browser = self.connected_service()
         window = self.account_window(service=service)
-        controls = window.sims_page.account_controls
+        controls = window.home_page.account_controls
         controls.connect_button.click()
         browser.callback(AuthEvent.AUTHENTICATED)
         browser.callback(AuthEvent.EXPIRED)
         self.assertEqual(controls.status_label.text(), "Session expired")
+        self.assertTrue(controls.isVisible())
         self.assertTrue(controls.connect_button.isEnabled())
         self.assertTrue(browser.closed)
         self.assertEqual(browser.opened, 1)
@@ -83,7 +90,7 @@ class AccountGuiTests(DesktopCase):
     def test_rejected_login_stays_user_controlled_and_cancel_ignores_late_success(self):
         service, browser = self.connected_service()
         window = self.account_window(service=service)
-        controls = window.sims_page.account_controls
+        controls = window.home_page.account_controls
         controls.connect_button.click()
         browser.callback(AuthEvent.REJECTED)
         self.assertIn("not accepted", controls.detail_label.text())
@@ -92,12 +99,14 @@ class AccountGuiTests(DesktopCase):
         browser.callback(AuthEvent.AUTHENTICATED)
         self.assertEqual(controls.status_label.text(), "Not connected")
         self.assertIn("cancelled", controls.detail_label.text())
+        self.assertTrue(controls.isVisible())
+        self.assertTrue(controls.connect_button.isVisible())
         self.assertTrue(browser.closed)
 
     def test_explicit_copy_only_and_private_clipboard_clears_on_disconnect(self):
         service, browser = self.connected_service()
         window = self.account_window(service=service)
-        controls = window.sims_page.account_controls
+        controls = window.home_page.account_controls
         self.application.clipboard().setText("Synthetic prior clipboard")
         controls.connect_button.click()
         controls.offer_otp(MessageInbox((Message(sender="DITO", body="123456 is your authentication code."),)))
@@ -115,7 +124,7 @@ class AccountGuiTests(DesktopCase):
     def test_clipboard_changed_by_user_is_preserved_on_close(self):
         service, browser = self.connected_service()
         window = self.account_window(service=service)
-        controls = window.sims_page.account_controls
+        controls = window.home_page.account_controls
         controls.connect_button.click()
         controls.offer_otp(MessageInbox((Message(sender="DITO", body="123456 is your authentication code."),)))
         controls.otp_copy_button.click()
@@ -129,11 +138,13 @@ class AccountGuiTests(DesktopCase):
         messages = ControlledMessageProvider(MessageInbox((Message(sender="DITO", body="123456 is your authentication code."),)))
         self.providers.append(messages)
         window = self.account_window(service=service, messages=messages)
-        controls = window.sims_page.account_controls
+        controls = window.home_page.account_controls
         window.navigation.setCurrentRow(2)
         self.wait_until(lambda: not window.messages_controller.busy)
         self.assertFalse(service.state.otp_available)
+        window.navigation.setCurrentRow(0)
         controls.connect_button.click()
+        window.navigation.setCurrentRow(2)
         window.messages_page.refresh_button.click()
         self.wait_until(lambda: not window.messages_controller.busy)
         self.assertTrue(service.state.otp_available)
@@ -147,15 +158,16 @@ class AccountGuiTests(DesktopCase):
         window = self.account_window(service=service)
         output, error = io.StringIO(), io.StringIO()
         with redirect_stdout(output), redirect_stderr(error):
-            window.sims_page.account_controls.connect_button.click()
+            window.home_page.account_controls.connect_button.click()
         self.assertEqual(output.getvalue() + error.getvalue(), "")
         self.assertNotIn("SYNTHETIC_PASSWORD_COOKIE_TOKEN", self.displayed_text(window))
-        self.assertIn("could not be opened", window.sims_page.account_controls.detail_label.text())
+        self.assertIn("could not be opened", window.home_page.account_controls.detail_label.text())
+        self.assertTrue(window.home_page.account_controls.connect_button.isVisible())
 
     def test_window_shutdown_cancels_browser_and_revokes_callbacks(self):
         service, browser = self.connected_service()
         window = self.account_window(service=service)
-        controls = window.sims_page.account_controls
+        controls = window.home_page.account_controls
         controls.connect_button.click()
         window.close()
         browser.callback(AuthEvent.AUTHENTICATED)
@@ -179,25 +191,24 @@ class AccountGuiTests(DesktopCase):
             window.show()
             self.wait_until(lambda: window._startup_started and not window.refresh_controller.busy)
             window.render_snapshot(snapshot)
-            window.navigation.setCurrentRow(1)
-            controls = window.sims_page.account_controls
+            controls = window.home_page.account_controls
             controls.connect_button.click()
             self.assertEqual(controls.status_label.text(), "Connected")
             self.assertIn("DEMO", controls.detail_label.text())
             self.assertTrue(window.demo_label.isVisible())
-            controls.disconnect_button.click()
+            window.home_page.account_disconnect_button.click()
             self.assertEqual(controls.status_label.text(), "Not connected")
             self.assertFalse(any("browser" in str(call) for call in imports.call_args_list))
 
     def test_injected_snapshot_provider_does_not_enable_account_browser(self):
         window = app.create_window(provider=self.provider())
         self.windows.append(window)
-        self.assertFalse(window.sims_page.account_controls.connect_button.isEnabled())
+        self.assertFalse(window.home_page.account_controls.connect_button.isEnabled())
 
     def test_malformed_injected_state_cannot_leak_private_fields_in_slot_errors(self):
         service, _browser = self.connected_service()
         window = self.account_window(service=service)
-        controls = window.sims_page.account_controls
+        controls = window.home_page.account_controls
         output, error = io.StringIO(), io.StringIO()
         with redirect_stdout(output), redirect_stderr(error):
             controls.render_state(AccountState(phase=["SYNTHETIC_PRIVATE_PHASE"]))
@@ -220,7 +231,9 @@ class AccountGuiTests(DesktopCase):
         page = window.messages_page
         self.assertEqual(page.message_list.count(), 100)
         page.message_list.setCurrentRow(99)
-        self.assertEqual(page.content_view.toPlainText(), entries[-1].body)
+        self.assertIsNone(page.details_dialog)
+        page.open_selected_message()
+        self.assertEqual(page.details_dialog.content_view.toPlainText(), entries[-1].body)
 
     def test_user_selection_resolves_ambiguous_otp_without_copy_or_submission(self):
         service, browser = self.connected_service()
@@ -230,7 +243,7 @@ class AccountGuiTests(DesktopCase):
         )))
         self.providers.append(messages)
         window = self.account_window(service=service, messages=messages)
-        window.sims_page.account_controls.connect_button.click()
+        window.home_page.account_controls.connect_button.click()
         window.navigation.setCurrentRow(2)
         self.wait_until(lambda: not window.messages_controller.busy)
         self.assertFalse(service.state.otp_available)

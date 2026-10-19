@@ -2,6 +2,7 @@
 
 from contextlib import ExitStack, redirect_stderr, redirect_stdout
 import io
+import json
 import os
 import unittest
 from unittest.mock import patch
@@ -10,7 +11,7 @@ os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
 from PySide6.QtCore import QCoreApplication, QEvent, QObject, QUrl, Signal
 from PySide6.QtWebEngineCore import QWebEngineProfile, QWebEngineScript, QWebEngineSettings
-from PySide6.QtWidgets import QApplication, QWidget
+from PySide6.QtWidgets import QApplication, QPushButton, QWidget
 from shiboken6 import isValid
 
 from sim_manager.account_models import AuthEvent
@@ -95,6 +96,11 @@ class FakePage(QObject):
         self.callbacks = []
         self.probes = []
         self.actions = []
+        self.helper_result = '{"request":0,"fillable":false}'
+        self.fill_result = False
+        self.helper_pending = False
+        self.helper_callbacks = []
+        self.helper_probes = []
 
     def settings(self):
         return self._settings
@@ -108,7 +114,18 @@ class FakePage(QObject):
     def url(self):
         return self._url
 
-    def runJavaScript(self, source, callback):
+    def runJavaScript(self, source, *arguments):
+        if len(arguments) == 2:
+            world, callback = arguments
+            self.helper_probes.append((source, world))
+            if self.helper_pending:
+                self.helper_callbacks.append(callback)
+            else:
+                callback(self.helper_result if source == browser._HELPER_PROBE else self.fill_result)
+            return
+        if len(arguments) != 1:
+            raise TypeError("Unsupported synthetic JavaScript call")
+        callback = arguments[0]
         self.probes.append(source)
         if self.pending:
             self.callbacks.append(callback)
@@ -122,6 +139,40 @@ class FakePage(QObject):
 class FakeView(QWidget):
     def setPage(self, page):
         self.browser_page = page
+
+    def setZoomFactor(self, factor):
+        self._zoom_factor = factor
+
+    def zoomFactor(self):
+        return self._zoom_factor
+
+
+class StubHelperPanel(QWidget):
+    fill_requested = Signal(str)
+
+    def __init__(self):
+        super().__init__()
+        self.requests = []
+        self.fillable = []
+        self.fills = []
+        self.stops = 0
+        self.shutdowns = 0
+        self.setFixedHeight(60)
+
+    def request_sms_code(self, request):
+        self.requests.append(request)
+
+    def set_fillable(self, fillable):
+        self.fillable.append(fillable)
+
+    def fill_result(self, filled):
+        self.fills.append(filled)
+
+    def stop(self):
+        self.stops += 1
+
+    def shutdown(self):
+        self.shutdowns += 1
 
 
 class DeniedRequest:
@@ -186,6 +237,23 @@ class DitoBrowserTests(unittest.TestCase):
         page.result = "authenticated"
         self.surface._probe()
 
+    def opened_with_helper(self):
+        panel = StubHelperPanel()
+        surface = browser.DitoBrowserSurface(helper_panel=panel)
+        self.guards.enter_context(patch.object(surface, "show"))
+        self.addCleanup(self.clean_helper_surface, surface)
+        surface.open(self.events.append)
+        page = surface._page
+        self.assertIsNotNone(page)
+        page.loadFinished.emit(True)
+        return surface, panel, page
+
+    def clean_helper_surface(self, surface):
+        surface.close()
+        self.flush_deletes()
+        surface.deleteLater()
+        self.flush_deletes()
+
     def test_open_loads_only_official_flow_with_unnamed_memory_profile(self):
         page, profile, dialog = self.opened()
         self.assertEqual(page.loaded_url, QUrl("https://my.dito.ph/"))
@@ -201,12 +269,247 @@ class DitoBrowserTests(unittest.TestCase):
 
     def test_observer_is_installed_before_navigation_once_in_main_world(self):
         page, _, _ = self.opened()
-        self.assertEqual(len(page.scripts().items), 1)
-        script = page.scripts().items[0]
+        observers = [script for script in page.scripts().items
+                     if script.name() == "SIM Manager authentication observer"]
+        self.assertEqual(len(observers), 1)
+        script = observers[0]
         self.assertEqual(script.injectionPoint(), QWebEngineScript.InjectionPoint.DocumentCreation)
         self.assertEqual(script.worldId(), QWebEngineScript.ScriptWorldId.MainWorld)
         self.assertFalse(script.runsOnSubFrames())
         self.assertEqual(script.sourceCode(), browser.observer_source())
+
+    def test_login_presentation_is_separate_from_auth_observer_and_native_cancel_stays_accessible(self):
+        page, _, dialog = self.opened()
+        scripts = {script.name(): script for script in page.scripts().items}
+        self.assertEqual(set(scripts), {
+            "SIM Manager authentication observer", "SIM Manager login presentation",
+        })
+        presentation = scripts["SIM Manager login presentation"]
+        self.assertEqual(presentation.injectionPoint(), QWebEngineScript.InjectionPoint.DocumentReady)
+        self.assertEqual(presentation.worldId(), QWebEngineScript.ScriptWorldId.ApplicationWorld)
+        self.assertFalse(presentation.runsOnSubFrames())
+        self.assertTrue(presentation.sourceCode().strip())
+        self.assertNotEqual(presentation.sourceCode(), browser.observer_source())
+        self.assertEqual(scripts["SIM Manager authentication observer"].worldId(),
+                         QWebEngineScript.ScriptWorldId.MainWorld)
+        self.assertEqual((dialog.width(), dialog.height()), (480, 520))
+        self.assertEqual((dialog.minimumWidth(), dialog.minimumHeight()), (420, 500))
+        self.assertEqual(self.surface._view.zoomFactor(), 0.88)
+        layout = dialog.layout()
+        margins = layout.contentsMargins()
+        self.assertEqual((margins.left(), margins.top(), margins.right(), margins.bottom()),
+                         (8, 8, 8, 8))
+        self.assertEqual(layout.spacing(), 4)
+        dialog.show()
+        self.application.processEvents()
+        cancel = next(button for button in dialog.findChildren(QPushButton)
+                      if button.text() == "Cancel sign-in")
+        for width, height in ((620, 620), (420, 500)):
+            dialog.resize(width, height)
+            self.application.processEvents()
+            self.assertEqual((dialog.width(), dialog.height()), (width, height))
+            self.assertTrue(cancel.isVisible())
+            self.assertTrue(cancel.isEnabled())
+            self.assertTrue(dialog.contentsRect().contains(cancel.geometry()))
+        self.assertEqual(self.events, [])
+        cancel.click()
+        self.assertEqual(self.events, [AuthEvent.DISCONNECTED])
+        self.assertTrue(self.surface._closed)
+
+    def test_optional_presentation_failures_keep_official_auth_flow_without_private_output(self):
+        original_insert = FakeScripts.insert
+        insertion_attempts = []
+
+        def fail_presentation_insert(collection, script):
+            if script.name() == "SIM Manager login presentation":
+                insertion_attempts.append(True)
+                raise RuntimeError(PRIVATE)
+            original_insert(collection, script)
+
+        output = io.StringIO()
+        for failure in ("asset", "insertion"):
+            with self.subTest(failure=failure):
+                self.surface.close()
+                self.events.clear()
+                with ExitStack() as guards, redirect_stdout(output), redirect_stderr(output):
+                    if failure == "asset":
+                        asset = guards.enter_context(patch.object(browser, "files", side_effect=RuntimeError(PRIVATE)))
+                    else:
+                        guards.enter_context(patch.object(FakeScripts, "insert", fail_presentation_insert))
+                    page, _, _ = self.loaded()
+                    self.assertEqual(page.loaded_url, QUrl("https://my.dito.ph/"))
+                    self.assertEqual([script.name() for script in page.scripts().items],
+                                     ["SIM Manager authentication observer"])
+                    self.assertEqual(self.events, [])
+                    self.assertFalse(self.surface._closed)
+                    self.authenticate(page)
+                    self.assertEqual(self.events, [AuthEvent.AUTHENTICATED])
+                    self.assertFalse(self.surface._closed)
+                    if failure == "asset":
+                        asset.assert_called_once_with("sim_manager.carriers.dito")
+                    else:
+                        self.assertEqual(insertion_attempts, [True])
+                self.assertEqual(output.getvalue(), "")
+
+    def test_optional_sms_helper_is_separate_and_cannot_establish_authentication(self):
+        surface, panel, page = self.opened_with_helper()
+        scripts = {script.name(): script for script in page.scripts().items}
+        self.assertEqual(set(scripts), {
+            "SIM Manager authentication observer", "SIM Manager login presentation",
+            "SIM Manager explicit SMS helper",
+        })
+        helper = scripts["SIM Manager explicit SMS helper"]
+        self.assertEqual(helper.injectionPoint(), QWebEngineScript.InjectionPoint.DocumentReady)
+        self.assertEqual(helper.worldId(), QWebEngineScript.ScriptWorldId.ApplicationWorld)
+        self.assertFalse(helper.runsOnSubFrames())
+        observer = scripts["SIM Manager authentication observer"]
+        self.assertEqual(observer.sourceCode(), browser.observer_source())
+        self.assertEqual(observer.worldId(), QWebEngineScript.ScriptWorldId.MainWorld)
+        self.assertEqual(observer.injectionPoint(), QWebEngineScript.InjectionPoint.DocumentCreation)
+        self.assertTrue(surface._helper_timer.isActive())
+        page.helper_result = '{"request":1,"fillable":true}'
+        surface._probe_helper()
+        self.assertEqual(panel.requests, [1])
+        self.assertEqual(panel.fillable[-1], True)
+        self.assertEqual(page.helper_probes, [
+            (browser._HELPER_PROBE, QWebEngineScript.ScriptWorldId.ApplicationWorld),
+        ])
+        page._url = QUrl("https://my.dito.ph/pto/home")
+        surface._probe()
+        self.assertEqual(self.events, [])
+        self.assertFalse(surface._authenticated)
+        surface.close()
+        original_insert = FakeScripts.insert
+
+        def fail_only_helper(collection, script):
+            if script.name() == "SIM Manager explicit SMS helper":
+                raise RuntimeError(PRIVATE)
+            original_insert(collection, script)
+
+        output = io.StringIO()
+        with redirect_stdout(output), redirect_stderr(output), patch.object(
+            FakeScripts, "insert", fail_only_helper,
+        ):
+            surface, _, page = self.opened_with_helper()
+            self.assertEqual([script.name() for script in page.scripts().items], [
+                "SIM Manager authentication observer", "SIM Manager login presentation",
+            ])
+            page._url = QUrl("https://my.dito.ph/pto/home")
+            page.result = "authenticated"
+            surface._probe()
+        self.assertEqual(output.getvalue(), "")
+        self.assertEqual(self.events, [AuthEvent.AUTHENTICATED])
+
+    def test_helper_metadata_is_bounded_strict_and_private_errors_are_optional(self):
+        surface, panel, page = self.opened_with_helper()
+        output = io.StringIO()
+        with redirect_stdout(output), redirect_stderr(output):
+            for request in (1, 1, 2):
+                page.helper_result = json.dumps({"request": request, "fillable": True})
+                surface._probe_helper()
+            self.assertEqual(panel.requests, [1, 2])
+            for invalid in (
+                None, PRIVATE, "null", "[]", "x" * 129,
+                json.dumps({"request": True, "fillable": True}),
+                json.dumps({"request": -1, "fillable": True}),
+                json.dumps({"request": 2**53, "fillable": True}),
+                json.dumps({"request": 3, "fillable": 1}),
+                json.dumps({"request": 3, "fillable": True, "token": PRIVATE}),
+            ):
+                page.helper_result = invalid
+                surface._probe_helper()
+                self.assertFalse(panel.fillable[-1])
+            self.assertEqual(panel.requests, [1, 2])
+            page.helper_result = '{"request":0,"fillable":false}'
+            surface._probe_helper()
+            self.assertEqual(panel.stops, 1)
+            with patch.object(page, "runJavaScript", side_effect=RuntimeError(PRIVATE)):
+                surface._probe_helper()
+            self.assertFalse(surface._helper_probe_pending)
+            with patch.object(panel, "set_fillable", side_effect=RuntimeError(PRIVATE)):
+                surface._probe_helper()
+        self.assertEqual(output.getvalue(), "")
+        self.assertEqual(self.events, [])
+        self.assertFalse(surface._closed)
+
+    def test_explicit_fill_uses_only_six_ascii_digits_and_revokes_stale_request_callbacks(self):
+        surface, panel, page = self.opened_with_helper()
+        page.helper_result = '{"request":1,"fillable":true}'
+        surface._probe_helper()
+        self.assertEqual(len(page.helper_probes), 1)
+        self.assertEqual(panel.fills, [])
+        for invalid in (None, 123456, "", "12345", "1234567", "12345a", "１２３４５６"):
+            surface.fill_otp(invalid)
+        self.assertEqual(len(page.helper_probes), 1)
+        self.assertTrue(panel.fills)
+        self.assertTrue(all(filled is False for filled in panel.fills))
+        panel.fills.clear()
+        page.fill_result = True
+        panel.fill_requested.emit("123456")
+        source, world = page.helper_probes[-1]
+        self.assertEqual(world, QWebEngineScript.ScriptWorldId.ApplicationWorld)
+        self.assertIn('.fill("123456",1)', source)
+        self.assertNotIn("submit", source.lower())
+        self.assertEqual(panel.fills, [True])
+        page.helper_pending = True
+        panel.fill_requested.emit("654321")
+        callback = page.helper_callbacks[-1]
+        page.helper_pending = False
+        page.helper_result = '{"request":2,"fillable":true}'
+        surface._probe_helper()
+        callback(True)
+        self.assertEqual(panel.fills, [True])
+        page.fill_result = "true"
+        panel.fill_requested.emit("123456")
+        self.assertEqual(panel.fills, [True, False])
+        self.assertEqual(self.events, [])
+
+    def test_helper_cleanup_rejects_late_callbacks_after_auth_rejection_navigation_and_close(self):
+        for transition in ("authenticated", "rejected", "document", "closed"):
+            with self.subTest(transition=transition):
+                self.events.clear()
+                surface, panel, page = self.opened_with_helper()
+                page.helper_result = '{"request":1,"fillable":true}'
+                surface._probe_helper()
+                page.helper_pending = True
+                surface._probe_helper()
+                metadata_callback = page.helper_callbacks[-1]
+                panel.fill_requested.emit("123456")
+                fill_callback = page.helper_callbacks[-1]
+                if transition == "authenticated":
+                    page._url = QUrl("https://my.dito.ph/pto/home")
+                    page.result = "authenticated"
+                    surface._probe()
+                    self.assertEqual(self.events, [AuthEvent.AUTHENTICATED])
+                    self.assertFalse(surface._helper_timer.isActive())
+                    self.assertFalse(surface._dialog.isVisible())
+                    self.assertIsNotNone(surface._profile)
+                elif transition == "rejected":
+                    page.result = "rejected"
+                    surface._probe()
+                    self.assertEqual(self.events, [AuthEvent.REJECTED])
+                    self.assertFalse(surface._closed)
+                elif transition == "document":
+                    page.loadStarted.emit()
+                    self.assertEqual(self.events, [])
+                else:
+                    surface.close()
+                    self.assertEqual(panel.shutdowns, 1)
+                    self.assertFalse(surface._helper_timer.isActive())
+                    self.assertEqual(self.events, [])
+                state = (list(panel.requests), list(panel.fillable), list(panel.fills),
+                         panel.stops, panel.shutdowns)
+                metadata_callback('{"request":2,"fillable":true}')
+                fill_callback(True)
+                self.assertEqual((panel.requests, panel.fillable, panel.fills,
+                                  panel.stops, panel.shutdowns), state)
+                if transition == "document":
+                    page.helper_pending = False
+                    page.helper_result = '{"request":1,"fillable":true}'
+                    page.loadFinished.emit(True)
+                    surface._probe_helper()
+                    self.assertEqual(panel.requests, [1, 2])
+                surface.close()
 
     def test_browser_settings_deny_unneeded_privileged_actions(self):
         page, profile, _ = self.opened()

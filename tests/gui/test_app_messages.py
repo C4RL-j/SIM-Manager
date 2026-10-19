@@ -22,6 +22,8 @@ class AppMessagesTests(DesktopCase):
             self.wait_until(lambda: not window.refresh_controller.busy)
             self.assertIsNotNone(window.messages_controller)
             self.assertFalse(window.messages_page.loaded)
+            self.assertIsNone(window.messages_page.last_refreshed_at)
+            self.assertIsNone(window.messages_page.details_dialog)
             self.assertFalse(window.messages_controller.busy)
             self.assertTrue(any("Up to 20 messages" in label.text()
                                 for label in window.messages_page.findChildren(QLabel)))
@@ -31,10 +33,17 @@ class AppMessagesTests(DesktopCase):
         with patch("sim_manager.devices.d2.router.fetch_sms_response") as fetch:
             window = self.composed_window(demo=True)
             window.navigation.setCurrentRow(2)
-            self.wait_until(lambda: not window.messages_controller.busy)
             page = window.messages_page
+            # The first router observation can cancel the early inbox read and
+            # queue its replacement. Idle alone also describes that brief gap.
+            self.wait_until(lambda: page.loaded and not window.refresh_controller.busy
+                            and not window.messages_controller.busy)
             self.assertEqual(page.message_list.count(), 2)
-            self.assertIn("synthetic", page.content_view.toPlainText())
+            self.assertIsNone(page.details_dialog)
+            page.open_selected_message()
+            self.assertIn("synthetic", page.details_dialog.content_view.toPlainText())
+            page.details_dialog.close_button.click()
+            self.wait_until(lambda: page.details_dialog is None)
             self.assertTrue(window.demo_label.isVisible())
             self.assertIn("DEMO", window.windowTitle())
             page.refresh_button.click()
@@ -58,8 +67,16 @@ class AppMessagesTests(DesktopCase):
         self.wait_until(lambda: not window.messages_controller.busy)
         self.assertEqual(len(provider.calls), 1)
         self.assertEqual(window.messages_page.message_list.count(), 2)
-        self.assertTrue(window.messages_page.content_view.toPlainText())
+        page = window.messages_page
+        self.assertIsNone(page.details_dialog)
+        page.open_selected_message()
+        details = page.details_dialog
+        self.assertTrue(details.content_view.toPlainText())
+        cleared = []
+        details.finished.connect(lambda _: cleared.append(details.content_view.toPlainText() == ""))
         window.close()
         self.assertEqual(window.messages_page.message_list.count(), 0)
-        self.assertEqual(window.messages_page.content_view.toPlainText(), "")
+        self.assertIsNone(page.details_dialog)
+        self.assertEqual(cleared, [True])
+        self.assertIsNone(page.last_refreshed_at)
         self.assertFalse(window.start_messages_refresh())

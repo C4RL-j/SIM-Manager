@@ -27,14 +27,41 @@ states, credentials, tokens and messages. The production composition uses the
 per-user app-data location; demo and explicit provider injection use memory.
 The router credential store and memory-only MyDITO browser remain separate.
 
-The native navigation is Home → SIMs → Messages → History → Settings. Home
-retains all normalized D2 details and adds active-profile presentation and a
-Messages action. Account-data fields remain explicitly unavailable. SIMs owns
-the existing account controls, permitted only for the inserted DITO profile.
+The native navigation is Home → SIMs → Messages → History → Settings. Home is a
+standalone compact SIM/account dashboard with prominent data remaining/promo
+expiry, active-profile presentation, an explicit number disclosure and a Messages
+action. A single connection card combines reported mobile connection/type and
+SIM readiness, with a static radio icon that does not claim signal strength.
+Account-data fields consume normalized carrier data; extra allowance/bucket/load
+expiry details remain available through a compact disclosure. Home-only styles
+leave the shared shell and other pages unchanged. `ui/home_display.py` formats
+known dates for display without assigning a timezone to naive carrier dates.
+It reuses neutral promo-expiry presentation and never derives allowance totals.
+The normalized account model currently supplies no verified total, so Home resets
+and hides its progress component. Home owns the existing `AccountControls`,
+permitted only for the inserted DITO profile. Its compact MyDITO prompt and the
+existing connected data card share one layout slot and are mutually exclusive.
+The data card's small Disconnect action delegates to the existing control/handler.
+MainWindow routes account state, selected-message OTP offers, context changes and
+shutdown to this same Home-owned controller. Router connection presentation is
+independent from account authentication. SIMs contains profile information,
+creation and Rename, without another account controller or service listener.
 Browsing another saved row changes selection alone. Account association records
 the profile that initiated login, without claiming its subscriber number was
 verified against the inserted SIM. Settings owns router/app
 information and the existing Forget router login control; History has no service.
+Settings additionally reuses the existing Overview diagnostic widget factories
+and all fourteen fields inside a collapsed-by-default Connection details section,
+at compact text sizes. MainWindow delivers the same `DeviceView` to Home and
+Settings on the existing snapshot signal. Disclosure does no I/O; hidden details
+remain current without a second controller or polling timer.
+
+`present_promo_expiry()` consumes neutral AccountData only. Explicit promo dates
+take precedence; otherwise only buckets with reported byte-unit quantities can
+supply named data-bucket dates. It preserves multiple/missing dates individually,
+without deriving a global earliest/latest date or reusing load expiry. Unlimited
+or unclassified resource names cannot establish data-bucket identity. Explicit
+SIM absence or required PIN/PUK is Not Ready; missing evidence is Unknown.
 
 MainWindow observes status through the profile service. A physical context change
 disconnects the old carrier session, revokes copied OTP state, cancels inbox work,
@@ -45,7 +72,122 @@ Authentication failures cannot imply removal and do not disconnect a SIM account
 Existing transport endpoints, independent SMS authentication and bounded shutdown
 remain unchanged. Full numbers are allowed in normal UI, never diagnostics.
 
+Messages consumes the same normalized inbox and refresh controller. A custom
+plain-text row delegate draws sender/date and at most two preview lines while the
+list occupies the available page height. Selection still emits the existing OTP
+offer signal; only double-click or Enter opens one owned, modeless Qt details
+dialog. The dialog exposes the complete read-only SMS with explicit body-copy and
+Close/Escape actions, and clears private widgets/references on closure. A usable
+inbox replacement, SIM reset or app shutdown closes obsolete details; failed reads
+preserve the current inbox and its last-successful local refresh time. No SMS
+transport, request limit, SMS polling or authentication behavior changes.
+Chronological display sorting applies only when every timestamp is unambiguously
+recognized and comparable; otherwise the UI preserves the supplied order. Raw
+model timestamps remain unchanged and do not acquire an inferred timezone.
+
+The DITO browser also installs optional `carriers/dito/login_focus.js` at
+DocumentReady in ApplicationWorld, on the main frame only. This presentation
+script recognizes public login-card/control structure and applies removable CSS
+to the original DOM. It does not access form values, browser storage, requests,
+responses or the authentication observer. Unknown structure, route changes and
+visible challenge/consent surfaces restore the full page. Resource/insertion
+failures are swallowed locally, without publishing an authentication error.
+Width adjustments apply only to recognized card ancestors and footer containers;
+original controls and legal links remain accessible without overflow clipping.
+The existing main-world auth observer, request allowlist, TLS/profile isolation,
+session callbacks and native Cancel are unchanged.
+
+`app.py` additionally composes a native `ui/sign_in_helpers.py` panel using the
+existing profile service and MainWindow's single MessagesRefreshController.
+`services/sign_in_helpers.py` formats copied numbers and owns a bounded private
+new-message watch: complete post-click baseline, content fingerprints, unique
+candidate and five-minute monotonic deadline. Router IDs/order/timestamps never
+prove freshness. No extra transport, worker, persistence or profile identity
+rule is introduced.
+
+The optional carrier `sms_helper.js` observes trusted clicks on the original SMS
+request control in ApplicationWorld and returns only a counter/field-availability
+pair. Native request IDs remain monotonic across document changes. Only an
+explicit Fill OTP action transfers the temporary candidate to the original input
+through its native setter and input/change events; the helper never reads fields,
+submits or initiates an authentication request. Document/request/session/context
+revisions revoke late callbacks. Existing focus styling/fallback and the
+authentication observer/profile/request policy remain unchanged.
+
+## Automatic account refresh, tray and desktop lifetime
+
+`ui/account_refresh.py` owns one shared single-shot Qt timer for scheduled account
+reads. MainWindow binds its observations to the inserted profile UUID and current
+SIM context; only a non-demo Connected/Validated account is eligible. The service's
+existing post-login read, automatic scheduling, Home refresh and tray refresh use
+the same guarded in-flight account reader. Successful reads schedule the next
+interval; disconnect, expiry, account mismatch, SIM change and shutdown revoke the
+schedule. Ordinary router status and SMS controllers keep their existing separate
+refresh paths without new background reads.
+
+Temporary account failures retain last-known verified data and progressively
+back off automatic retries up to ten minutes. The neutral `RATE_LIMITED` outcome
+carries only an optional bounded retry duration. The carrier bridge recognizes
+HTTP 429 and normalizes its `Retry-After` header, without exporting raw responses
+or headers. The service enforces a monotonic cooldown even for direct callers;
+the scheduler and manual controls honor it. A valid retry duration is bounded to
+one hour; unavailable retry metadata uses a sixty-second fallback, with any
+longer exponential delay preserved. This does not renew or recreate authentication.
+
+`ui/preferences.py` defines the immutable public options: automatic refresh on,
+thirty-second interval (fifteen/thirty/sixty allowed), close-to-tray on. Normal
+production composition persists only these fields through native per-user
+`QSettings`; demo and injected compositions use memory preferences with automatic
+refresh initially disabled. Invalid values fall back to defaults and save errors
+produce a fixed notice. No account snapshot, subscriber metadata, credential,
+cookie/token, OTP or SMS enters this store. Settings changes configure the same
+scheduler rather than creating another service or listener.
+
+`services/windows_startup.py` owns the optional current-user Windows Run entry.
+Only an explicit Settings toggle writes or deletes the application's own value;
+ordinary startup reads it without changing it. The quoted current frozen EXE path
+supports spaces and renamed portable executables. Source/demo/injected windows
+do not register startup. This is separate from QSettings and stores no account
+data. Existing close-to-tray preferences are respected; new installs default to
+keeping the process alive in the tray, with explicit Exit for full shutdown.
+
+`ui/tray.py` renders the same normalized active profile, AccountState and DeviceView
+already delivered to Home. It owns the branded tray icon, one bounded popup and
+Refresh/Open/Exit actions, without transport or account storage. The popup and
+tooltip use only the current verified account display state; stale/unavailable
+data stays explicit. Its progress component remains hidden because the account
+model has no verified total. Qt logical screen/work-area geometry bounds the
+popup flush against that screen's right edge, with Escape, outside-click and
+repeated-icon-click dismissal. Shutdown
+removes event filters, hides/disposes the icon and clears popup values.
+
+Minimizing does not exit. The optional close-to-tray setting hides the main window
+only when a tray is actually available; otherwise closing performs the existing
+bounded shutdown. Explicit Exit always stops scheduling and disposes sessions,
+tray objects and workers. Sessions may continue in memory while hidden, but a
+process restart still requires MyDITO login. The module launcher uses
+`ui/single_instance.py`: QLockFile claims the current-user desktop instance and a
+user-restricted QLocalServer accepts only a fixed activation message. A second
+launch raises the existing window without creating duplicate timers or sessions;
+no account/SIM/credential data crosses this channel.
+
 ## Historical foundation layers
+
+The separately authorized account reader installs `carriers/dito/account_data.js`
+in MainWorld alongside the unchanged authentication observer. After strict login
+proof and success-route verification, it invokes the official webpack request
+client for the reviewed subscriber/configuration/balance getters. The site still
+owns signing, cookies, tokens and subscriber/product IDs; none cross the page
+boundary. Subscriber-number binding is checked inside the page before and after
+awaited reads. Home/BaseLayout chunks and all unrelated endpoints remain blocked.
+
+`carriers/dito/account_data.py` accepts only a bounded display schema into opaque
+neutral `AccountData`/`AccountBucket`/`AccountPromo` models. `DitoAccountService`
+owns one in-flight post-login, scheduled or explicit refresh, session/request guards, stale retention
+on temporary failure and clear-on-expiry/mismatch/disconnect. Snapshots remain
+runtime state of the active profile and never enter profile persistence. Home
+renders reported account values and per-bucket expiries before its connection card,
+without summing buckets or parsing carrier response fields in UI code.
 
 Intended application layers:
 

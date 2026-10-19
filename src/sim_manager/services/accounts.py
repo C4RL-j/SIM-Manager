@@ -1,18 +1,21 @@
-"""Authentication lifecycle over an injected, isolated carrier browser.
+"""Account lifecycle over an injected, isolated carrier browser.
 
 The browser retains its own private in-memory session. This service stores only
-closed state and, while connecting, one temporary likely OTP. It performs no
-HTTP, SMS retrieval, persistence, automatic fill or automatic submission.
+normalized account data and, while connecting, one temporary likely OTP. It
+performs no HTTP, SMS retrieval, persistence, fill or automatic submission.
 """
 
 from __future__ import annotations
 
 from dataclasses import replace
+from math import ceil
 from threading import RLock
+from time import monotonic
 from typing import Callable, Protocol
 
 from sim_manager.account_models import (
-    AccountIssue, AccountPhase, AccountState, AuthEvent, SessionValidity,
+    AccountData, AccountDataIssue, AccountDataResult, AccountIssue, AccountPhase,
+    AccountState, AuthEvent, SessionValidity, MAX_ACCOUNT_RETRY_SECONDS,
 )
 from sim_manager.carriers.dito import DitoOtpCandidate, match_otp
 from sim_manager.message_models import MessageInbox
@@ -45,6 +48,9 @@ class AccountService(Protocol):
     def disconnect(self) -> None:
         ...
 
+    def refresh_account(self) -> bool:
+        ...
+
     def cancel(self) -> None:
         ...
 
@@ -68,7 +74,7 @@ class DitoAccountService:
 
     def __init__(
         self, browser_factory: Callable[[], AccountBrowser] | None = None,
-        *, is_demo: bool = False,
+        *, is_demo: bool = False, clock: Callable[[], float] = monotonic,
     ) -> None:
         self.is_demo = bool(is_demo)
         self._factory = browser_factory
@@ -77,6 +83,9 @@ class DitoAccountService:
         self._state = AccountState(is_demo=self.is_demo)
         self._otp: DitoOtpCandidate | None = None
         self._generation = 0
+        self._data_request = 0
+        self._clock = clock
+        self._cooldown_until = 0.0
         self._closed = False
         self._lock = RLock()
 
@@ -165,6 +174,7 @@ class DitoAccountService:
 
     def _receive(self, event: AuthEvent, generation: int) -> None:
         browser: AccountBrowser | None = None
+        refresh_data = False
         with self._lock:
             if self._closed or generation != self._generation:
                 return
@@ -179,11 +189,15 @@ class DitoAccountService:
                     issue=AccountIssue.REJECTED, is_demo=self.is_demo,
                 )
             elif event is AuthEvent.AUTHENTICATED:
+                # A duplicate observer event must not clear data or start a loop.
+                if self._state.phase is not AccountPhase.CONNECTING:
+                    return
                 self._otp = None
                 self._state = AccountState(
                     phase=AccountPhase.CONNECTED,
                     validity=SessionValidity.VALIDATED, is_demo=self.is_demo,
                 )
+                refresh_data = True
             else:
                 self._generation += 1
                 self._otp = None
@@ -204,6 +218,126 @@ class DitoAccountService:
                                else AccountIssue.UNAVAILABLE),
                         is_demo=self.is_demo,
                     )
+        self._close_browser(browser)
+        self._notify()
+        if refresh_data:
+            self.refresh_account()
+
+    def refresh_account(self) -> bool:
+        """Start one asynchronous read through the current browser session.
+
+        Legacy authentication-only browsers may omit the read method. Their
+        successful authentication state remains unchanged. Request/session
+        revisions also protect against synchronous callbacks and cancellation.
+        """
+        with self._lock:
+            if (self._closed or self._state.phase is not AccountPhase.CONNECTED
+                    or self._state.data_refreshing or self._browser is None
+                    or self.is_demo):
+                return False
+            browser = self._browser
+            generation = self._generation
+            remaining = ceil(self._cooldown_until - self._clock())
+            if remaining > 0:
+                self._state = replace(
+                    self._state, data_issue=AccountDataIssue.RATE_LIMITED,
+                    data_stale=self._state.data is not None,
+                    retry_after_seconds=min(remaining, MAX_ACCOUNT_RETRY_SECONDS),
+                )
+        if remaining > 0:
+            self._notify()
+            return False
+        try:
+            refresh = getattr(browser, "refresh_account", None)
+        except Exception:
+            refresh = None
+        if not callable(refresh):
+            return False
+        with self._lock:
+            if (self._closed or generation != self._generation
+                    or browser is not self._browser
+                    or self._state.phase is not AccountPhase.CONNECTED
+                    or self._state.data_refreshing or self._clock() < self._cooldown_until):
+                return False
+            self._data_request += 1
+            request = self._data_request
+            self._state = replace(self._state, data_refreshing=True, data_issue=None,
+                                  retry_after_seconds=None)
+        self._notify()
+        with self._lock:
+            if (self._closed or generation != self._generation
+                    or browser is not self._browser
+                    or request != self._data_request
+                    or not self._state.data_refreshing):
+                return False
+        try:
+            started = refresh(
+                lambda result: self._receive_data(result, generation, request, browser),
+            )
+        except Exception:
+            # Browser exceptions can contain private URLs, tokens or payloads.
+            self._receive_data(
+                AccountDataResult(issue=AccountDataIssue.UNAVAILABLE),
+                generation, request, browser,
+            )
+            return False
+        if started is not True:
+            self._receive_data(
+                AccountDataResult(issue=AccountDataIssue.UNAVAILABLE),
+                generation, request, browser,
+            )
+            return False
+        return True
+
+    def _receive_data(
+        self, result: AccountDataResult, generation: int, request: int,
+        owner: AccountBrowser,
+    ) -> None:
+        browser: AccountBrowser | None = None
+        with self._lock:
+            if (self._closed or generation != self._generation
+                    or request != self._data_request or owner is not self._browser
+                    or self._state.phase is not AccountPhase.CONNECTED
+                    or not self._state.data_refreshing):
+                return
+            if type(result) is not AccountDataResult:
+                result = AccountDataResult(issue=AccountDataIssue.UNSUPPORTED)
+            data, issue = result.data, result.issue
+            if (data is not None and type(data) is not AccountData
+                    or issue is not None and not isinstance(issue, AccountDataIssue)
+                    or (data is None) == (issue is None)):
+                data, issue = None, AccountDataIssue.UNSUPPORTED
+            if issue in (AccountDataIssue.EXPIRED, AccountDataIssue.ACCOUNT_MISMATCH):
+                # Revoke both callback families before profile disposal. No old
+                # value may survive expiry or belong to another SIM/account.
+                self._generation += 1
+                self._otp = None
+                browser, self._browser = self._browser, None
+                if issue is AccountDataIssue.EXPIRED:
+                    self._state = AccountState(
+                        phase=AccountPhase.EXPIRED, validity=SessionValidity.EXPIRED,
+                        issue=AccountIssue.EXPIRED, is_demo=self.is_demo,
+                        data_issue=issue,
+                    )
+                else:
+                    self._state = AccountState(
+                        phase=AccountPhase.ERROR, issue=AccountIssue.UNSUPPORTED_RESPONSE,
+                        is_demo=self.is_demo, data_issue=issue,
+                    )
+            elif data is not None:
+                self._state = replace(
+                    self._state, data=data, data_refreshing=False,
+                    data_stale=False, data_issue=None,
+                    retry_after_seconds=None,
+                )
+            else:
+                retry = result.retry_after_seconds if issue is AccountDataIssue.RATE_LIMITED else None
+                if issue is AccountDataIssue.RATE_LIMITED:
+                    self._cooldown_until = self._clock() + (retry or 60)
+                self._state = replace(
+                    self._state, data_refreshing=False, data_stale=self._state.data is not None,
+                    data_issue=issue, retry_after_seconds=retry,
+                )
         self._close_browser(browser)
         self._notify()
 
@@ -307,6 +441,10 @@ class DemoAccountService:
     def disconnect(self) -> None:
         self._state = AccountState(is_demo=True)
         self._notify()
+
+    def refresh_account(self) -> bool:
+        # Demo never reads a live carrier account or fabricates balances.
+        return False
 
     def cancel(self) -> None:
         self._state = AccountState(issue=AccountIssue.CANCELLED, is_demo=True)

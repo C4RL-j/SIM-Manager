@@ -1,7 +1,8 @@
 """Source-backed MyDITO authentication boundary; no networking or secrets.
 
 The public-source ledger under tests/fixtures/dito records why these paths exist.
-This deliberately excludes subscriber, balance, promo and other account APIs.
+The default remains authentication-only. The separately enabled account reader
+admits only public-source-verified read getters, never purchases or other writes.
 """
 
 from importlib.resources import files
@@ -101,3 +102,27 @@ def request_allowed(url: str, method: str) -> bool:
 
 def observer_source() -> str:
     return files("sim_manager.carriers.dito").joinpath("auth_observer.js").read_text(encoding="utf-8")
+
+
+def account_request_allowed(url: str, method: str) -> bool:
+    """Extend the unchanged login policy with the three reviewed account reads.
+
+    POST is the official site's getter method for both balance APIs. Product
+    identifiers remain inside the page; no caller can choose another origin.
+    Protected Home/BaseLayout chunks remain blocked to avoid unrelated effects.
+    """
+    if request_allowed(url, method):
+        return True
+    if not trusted_origin(url):
+        return False
+    parts = urlsplit(url)
+    if parts.fragment:
+        return False
+    if method == "POST" and parts.path in {
+        "/ecare/webs/balance/balInfo",
+        "/ecare/webs/balance/balInfo/glSumInfo",
+    }:
+        return not parts.query
+    if method == "GET" and parts.path == "/ecare/webs/subs/qrySubsDetail":
+        return re.fullmatch(r"prodInstIds=[0-9]{1,32}", parts.query) is not None
+    return False

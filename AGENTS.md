@@ -54,9 +54,7 @@ Do not create DITO-specific UI logic.
 
 Current phase:
 
-Foundation reboot: Tasks 001–009 and 006.1 are complete within their approved scopes. Task 009 implements only DITO account authentication/session lifecycle through an isolated official MyDITO surface, behind carrier → service → GUI boundaries, with controlled live Connected/local Disconnect validation. Keep HTTP router authentication/status and neutral SMS retrieval independent. Legacy remains read-only. Do not port URL-only login guesses, persistent profiles/numbers, DOM overlays or automatic OTP submission. Credentials, OTPs and raw cookies/tokens must never enter diagnostics, application files or chat; MyDITO session state remains in memory. Preserve explicit DEMO isolation and bounded cancellation/shutdown. The current user request separately authorizes D2 admin password visibility, opt-in Windows Credential Manager storage, one startup login attempt and explicit Forget. MyDITO authentication/storage stays unchanged. No balance/promos/allowances, Smart, carrier auto-detection, sends/deletes, router configuration writes, DITO persistence or Task 010 work is authorized. Follow `docs/carriers/DITO.md` and `plans/active/000-foundation-reboot.md`.
-
-PySide6 is the approved native-shell framework. Historical pywebview/WebView2 discussions concern legacy code and a possible future carrier-account browser surface, not a current desktop-framework requirement. Do not open a browser automatically or import development probes into the GUI runtime.
+Foundation reboot: Tasks 001–003 are complete within their approved scopes. Task 004 is in progress to discover and verify the read-only cellular telemetry interface already used by the D2 firmware/admin UI. Inspect firmware/web assets before invoking candidate getters, and use only established read-only requests. Do not guess AT/UBus/CGI/RPC commands or interact with configuration controls. Production detection/carrier logic, account integration, GUI work, and Task 005 remain deferred. Use `docs/devices/D2-HARDWARE-CAPABILITIES.md` for evidence and follow `plans/active/000-foundation-reboot.md`.
 
 The application repository is `sim-manager/`. Initialize Git only inside this directory. `../old/D2-desktop/` is read-only reference material, must not be added to the new repository, and must not be changed without explicit authorization.
 
@@ -64,16 +62,16 @@ Do not implement Smart features unless the active task explicitly requests them.
 
 However, new DITO code must be structured so Smart can later implement the same carrier interface.
 
-The active user request authorizes the SIM-first refactor: saved SIM profile
-metadata, verified identity matching, profile creation/renaming and Home, SIMs,
-Messages, History placeholder and Settings navigation. It supersedes historical
-restrictions on profile/number persistence above. Phone numbers may appear in
-normal UI; diagnostics remain private. Profile metadata is stored separately
-from router credentials and carrier sessions. DITO controls belong to the active
-DITO profile; no Smart support, History implementation, account-data retrieval or
-Task 12 is authorized.
-
 ## Authentication and account integration
+
+The current user request separately authorizes read-only DITO account data on
+Home after successful official MyDITO sign-in, automatic/manual account refresh,
+stale-data handling and one safe live account validation. It supersedes older
+account-data deferrals for this request only. Reuse the isolated site's own
+authenticated client; never export session material or private raw responses.
+Bind results to the active DITO SIM, show only verified reported values, and
+clear them on SIM/account changes. Preserve login/D2/SMS functionality. No Smart,
+TNT, purchases, subscriptions, History implementation or other task is authorized.
 
 Use legitimate user-authenticated carrier sessions.
 
@@ -92,8 +90,6 @@ Web scraping or network-response parsing may be used only behind the carrier ada
 ## Diagnostic privacy
 
 Diagnostic logs and exception output must mask or omit sensitive values. Never expose full phone numbers/MSISDNs, IMSIs, ICCIDs, OTPs, SMS bodies containing sensitive information, authentication cookies, tokens, or passwords. Do not include raw router responses or authentication payloads in diagnostic output when they could contain these values. Use synthetic values in tests and fixtures.
-
-Device-state repr/log output must also omit IMEIs, IP/DNS addresses, APNs, and Authorization values. Store availability rather than full SIM identifiers or addresses where the feature requires presence only. Opaque repr/str is not permission to serialize private model fields or raw endpoint payloads.
 
 ## Data integrity
 
@@ -147,3 +143,23 @@ A feature is not complete until:
 - architecture boundaries are preserved
 - relevant documentation is updated
 - changed functionality has been manually or automatically verified
+
+## Local Development Permissions
+
+Codex may:
+
+- read all files under `C:\PROJECTs\SIM-manager_workspace`
+- modify files only under `sim-manager`
+- run Python, PowerShell, Git, and test commands
+- access the local D2 router at `192.168.1.1`
+- inspect read-only local router/admin interfaces
+- inspect browser/network behavior when necessary for router research
+
+Codex must not:
+
+- modify files under `old/D2-desktop`
+- access unrelated personal directories
+- read browser passwords or credential stores
+- expose cookies, passwords, OTPs, tokens, IMSIs, ICCIDs, or MSISDNs
+- run destructive system commands
+- change router configuration unless explicitly authorized

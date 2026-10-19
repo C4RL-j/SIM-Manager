@@ -2,12 +2,50 @@
 
 A lightweight Windows SIM management application in development. The native PySide6 desktop shell provides Home, SIMs, Messages, a History placeholder and Settings. It manages saved SIM profiles while preserving direct local D2 authentication/status, the read-only inbox and isolated MyDITO authentication. Python 3.11 or newer is required.
 
+The supplied glossy green SIM/Wi-Fi artwork is bundled as the sidebar logo and
+native application/window icon, including in installed wheels.
+
+## Windows executable
+
+Download the Windows x64 portable ZIP from the
+[GitHub releases](https://github.com/C4RL-j/SIM-Manager/releases), extract the
+entire folder, then open `SIMManager.exe`. Keep the `_internal` directory beside
+the executable. Python installation and administrator access are not required.
+
+In **Settings → Application behavior**, **Start with Windows** optionally starts
+the packaged app when you sign in to Windows. It is off until you enable it.
+If you move the portable folder, turn this option off and on from the new location
+to update its startup path. Disable it before removing the application.
+
+Closing the window keeps the app in the system tray by default on new installs.
+Use the tray menu's **Exit** to quit fully. Existing saved close-to-tray choices
+are preserved; enable **Keep running in tray when closing window** if you had
+previously disabled it. MyDITO still requires sign-in after restarting.
+
+Release binaries are unsigned. See [building a release](docs/RELEASING.md).
+Third-party notices are in `packaging/`; the ZIP also includes its notices and
+a SHA-256 checksum.
+
 ## SIM profiles and navigation
 
-Home shows the active SIM's name, full number and carrier label alongside the
-existing network, signal and connection status. Open Messages is a quick inbox
-action. Load, data, promo and expiry show Not available until a carrier service
-supplies those values; this refactor adds no account-data requests.
+Home uses three compact cards: the active SIM, the MyDITO account, and a connection
+summary with the reported network badge. The account card offers **Connect DITO**
+when disconnected; verified sign-in replaces it with the prominent teal **Data
+remaining** balance and a small **Disconnect** action. **Show number**
+reveals the active SIM's full number; **Open Messages** remains alongside it.
+The account card keeps **Refresh account**, reported promo/bucket names, readable
+expiry dates, load balance and the last successful update. **Account details**
+reveals additional buckets, SMS/call allowances and load expiry when reported.
+The current account snapshot has no verified total data allowance, so the progress
+bar stays hidden. No percentage is inferred from resource names or bucket sums.
+Router reachability alone never means Connected; missing values stay unavailable
+or Unknown. Refresh failures retain the last verified values with a stale notice.
+
+Advanced router/network/PIN/signal/WAN details are under **Settings → Connection
+details**, collapsed by default. Expanding it shows the latest existing snapshot
+without starting another fetch or background poll. Promo expiry uses reported
+promo or clearly identified data-bucket dates, with separate dates preserved for
+multiple buckets; load expiry remains separate.
 
 SIMs lists saved profiles and marks the inserted SIM Active. A known validated
 router identity selects its saved profile automatically. An unknown SIM offers
@@ -29,12 +67,15 @@ carrier choices, UUIDs and identity fingerprints only. Active state, MyDITO
 sessions, router credentials and messages are excluded. DEMO and injected
 providers use isolated memory stores. Damaged/unavailable storage fails safely.
 
-DITO Account controls belong to the active DITO profile in SIMs. Sign-in,
-Disconnect and explicit Copy OTP retain their existing behavior. Changing SIMs
+MyDITO Account controls are on Home and belong to the inserted DITO profile.
+The SIMs page contains profile information, creation and Rename. Sign-in,
+Disconnect and explicit Copy OTP retain their existing behavior. Router/LTE
+connection status is independent of MyDITO account authentication. Changing SIMs
 disposes the old account session and clears its OTP/inbox; returning to a profile
 requires explicit Connect again. Messages remains an independent sidebar page
 and names its SIM context. Settings contains router and application information,
-including Forget saved D2 login. History is a placeholder; Smart support and
+including Forget saved D2 login and the public refresh/tray preferences described
+below. History is a placeholder; Smart support and
 Task 12 remain unstarted. The refactor passed 836 tests plus native Windows,
 DPAPI and packaging checks; the [completed plan](plans/completed/002-sim-first-refactor.md)
 records the file inventory, verification and recognition limits.
@@ -43,13 +84,54 @@ Task 007 adds direct router authentication and LIVE status without a browser. St
 
 The application connects directly to `https://192.168.1.1`, performs no DNS lookup, and rejects redirects. It trusts only the bundled public D2 certificate for that exact default origin, with certificate and IP hostname verification enabled. The observed certificate is valid through 2030-10-26. Other configured private IP origins use ordinary verified TLS unless an explicit certificate is supplied. Certificate replacement requires a reviewed resource update; there is no insecure fallback.
 
-The verified firmware protocol is `POST /web/v1/user/login` with JSON `{username, password}` and no credential transformation. A successful `{code: 200, data: {Authorization: ...}}` creates a private in-memory session; subsequent approved GETs send that opaque value verbatim in the Authorization header. No browser, DevTools, localStorage, cookies or manually copied tokens are required by the implementation. HTTP/body 401 or 403 invalidates the session, stops that refresh cycle and offers Sign in again. Remembered D2 credentials get one startup login attempt; failure opens the usual masked sign-in dialog without retrying automatically. Router Authorization is never persisted. Closing cancels work and discards authorization; the source-evidenced logout POST is deliberately unused.
+The verified firmware protocol is `POST /web/v1/user/login` with JSON `{username, password}` and no credential transformation. A successful `{code: 200, data: {Authorization: ...}}` creates a private in-memory session; subsequent approved GETs send that opaque value verbatim in the Authorization header. No browser, DevTools, localStorage, cookies or manually copied tokens are required by the implementation. HTTP/body 401 or 403 invalidates the session, stops that refresh cycle and offers Sign in again. Remembered D2 credentials get one startup login attempt; failure opens the usual masked sign-in dialog without retrying automatically. Router Authorization is never persisted. Exiting cancels work and discards authorization; the source-evidenced logout POST is deliberately unused.
 
 Login has a 20-second deadline; the subsequent seven-getter refresh has one separate 20-second deadline and 256 KiB per-response limit. Both use one cancellable worker, and GUI shutdown joins for at most one second. Safe UI messages distinguish authentication required/rejected, unreachable router, connection/TLS trouble, malformed data and partial status. Carrier stays Unknown; signal units, registration and roaming remain unverified.
 
-Open **Messages** to load up to 20 messages through the preserved local D2 Telnet/UBus getter. Task 009 expands the production service's request window so a likely sign-in OTP outside the earlier three-record window can be shown. Select a row to view its complete plain-text content. Messages has its own **Refresh** and **Cancel** actions, independent of Overview and its HTTP admin session. Failed or cancelled reads keep the displayed inbox; malformed individual entries produce a partial warning without discarding readable messages. An unreadable partial response cannot establish that a previously displayed inbox is empty.
+Open **Messages** to load up to 20 messages through the preserved local D2 Telnet/UBus getter. Task 009 expands the production service's request window so a likely sign-in OTP outside the earlier three-record window can be shown. The inbox fills the page with sender, readable timestamp and at most two preview lines per row. Single-click selects; double-click or **Enter** opens an owned read-only **Message Details** window with the full plain-text sender, timestamp and SMS body. **Copy Message** explicitly copies the body; **Close** or **Escape** closes the window. Refresh, SIM changes and application closure clear obsolete details.
 
-SMS content and sender identifiers appear only in the requested Messages view, remain in memory, and are never written to application logs or diagnostic errors. Private message models have opaque repr/str output; closing clears the visible content and cancels both read workers within one shared one-second join budget. Explicit `--demo` uses synthetic messages, keeps DEMO visible, and never replaces failed live reads with demo data. Sending, deletion, mark-read actions, message persistence, carrier OTP/account integration, and Task 009 are outside Task 008.
+Messages has its own **Refresh** and **Cancel** actions, independent of router admin/MyDITO authentication. Its last-successful-refresh time records an actual usable inbox read and remains unchanged on errors or cancellation. Failed or cancelled reads keep the displayed inbox; malformed individual entries produce a partial warning without discarding readable messages. An unreadable partial response cannot establish that a previously displayed inbox is empty. Comparable recognized timestamps are shown newest first; unknown or ambiguous dates retain the router's supplied order without guessing a timezone or date convention. A completed inbox read does not claim a continuing router or mobile connection.
+
+SMS content and sender identifiers appear only in the requested Messages view, remain in memory, and are never written to application logs or diagnostic errors. Private message models have opaque repr/str output; exiting clears the visible content and cancels both read workers within one shared one-second join budget. Explicit `--demo` uses synthetic messages, keeps DEMO visible, and never replaces failed live reads with demo data. Sending, deletion, mark-read actions, message persistence, carrier OTP/account integration, and Task 009 are outside Task 008.
+
+## Automatic account refresh and tray
+
+Normal mode defaults to automatic MyDITO account refresh every **30 seconds**.
+**Settings → Application behavior** can turn Auto-refresh off or choose **15, 30
+or 60 seconds**. Reads run only for the inserted DITO profile with an existing
+verified MyDITO session. Sign-in still triggers the initial read. Home's
+**Refresh account**, the tray's **Refresh now** and the automatic schedule share
+one request slot and the existing official reader; opening the tray starts no
+extra fetch. Router status and Messages keep their independent existing refresh
+actions; this setting adds no router or SMS polling.
+
+Temporary failures keep the last verified values and timestamp marked stale,
+with progressively delayed automatic retries. HTTP 429 uses a bounded
+`Retry-After` delay, or a safe fallback, and manual refresh also respects that
+cooldown. Expired sessions show **Reconnect DITO**. Automatic refresh
+never requests an OTP, fills a code or signs in on your behalf.
+
+When the system tray is available, click the SIM Manager icon to toggle a compact
+dashboard with the same active SIM, verified remaining data, reported promo/bucket
+dates, update time and separate account/network status used by Home. A second
+click, **Escape** or clicking outside dismisses it. **Refresh now**, **Open SIM
+Manager** and **Exit** are available in the popup and tray menu. No verified
+allowance total is currently supplied, so the tray progress bar stays hidden too.
+
+**Keep running in tray when closing window** is on by default for new installs. It
+lets the window's close button hide it while its in-memory session and enabled
+account refresh remain active; **Exit** performs full shutdown. Without a usable
+tray, closing exits and this option is disabled. Restarting still requires fresh
+MyDITO sign-in. Only these three public preferences persist in native per-user Qt
+settings; no account values, session material, phone numbers, OTPs or messages are
+stored there. DEMO and injected providers use isolated memory preferences with
+automatic refresh initially off.
+
+The module launcher permits one desktop instance per current user. A second
+launch requests activation of the existing window through a fixed local message,
+without opening another account session or passing private data between processes.
+Use **Exit** before relaunching in a different mode, such as switching from DEMO
+to normal mode.
 
 ## D2 router login controls
 
@@ -61,31 +143,80 @@ This UX passed 560 backend/service, 153 GUI and 57 Node tests (770 total), an is
 
 ## First desktop milestone
 
-The native Qt Widgets shell started as a visual milestone. Overview displays safe SIM/network/signal/WAN state with unknown values left explicit and Carrier Unknown. Messages consumes a normalized message service rather than raw SMS transport responses. Settings contains read-only router-address/status information, app information and a local Forget saved login action. SIMs contains the Task 009 DITO account controls for its active DITO profile. D2 credentials may be remembered securely by explicit choice; profile metadata is saved separately and MyDITO sessions remain unpersisted.
+The native Qt Widgets shell started as a visual milestone. Overview displays safe SIM/network/signal/WAN state with unknown values left explicit and Carrier Unknown. Messages consumes a normalized message service rather than raw SMS transport responses. Settings contains read-only router-address/status information, app information and a local Forget saved login action. Home contains the DITO account controls for its active DITO profile. D2 credentials may be remembered securely by explicit choice; profile metadata is saved separately and MyDITO sessions remain unpersisted.
 
 The app opens at its compact 840×600 window size and can be resized or maximized.
 
 Without remembered D2 credentials, normal mode initially reports Authentication required without network I/O. Explicit Sign in creates a direct router session and refreshes live status; no browser opens. Explicit `--demo` uses sanitized Task 004 fixture-derived state and labels the UI DEMO. Demo is never substituted silently for live data. The existing snapshot model is named `DeviceState`; no backend rename to the conceptual `DeviceSnapshot` is required.
 
-Overview and Messages Refresh use their service interfaces outside the GUI thread, block overlapping requests for each page, and report safe loading/error states. Closing requests cooperative cancellation and worker joins within one shared second; repeated shutdown is non-blocking. Shipped production/demo providers are bounded; arbitrary injected providers that ignore cancellation cannot be forcibly stopped, though daemon workers cannot block process shutdown. DITO balances, promos and allowances, Smart account integration, carrier detection, tray behavior, charts, configuration storage and Task 010 remain deferred.
+Overview and Messages Refresh use their service interfaces outside the GUI thread, block overlapping requests for each page, and report safe loading/error states. Final shutdown requests cooperative cancellation and worker joins within one shared second; repeated shutdown is non-blocking. Shipped production/demo providers are bounded; arbitrary injected providers that ignore cancellation cannot be forcibly stopped, though daemon workers cannot block process shutdown. At this first desktop milestone, DITO balances, promos and allowances, Smart account integration, carrier detection, tray behavior, charts, configuration storage and Task 010 were deferred; the account reader and refresh/tray behavior described above were added separately afterward.
 
 Task 006.1 polished the existing UI: compact routine status, warnings/errors as banners, prominent Carrier Unknown/Network/SIM information, all six signal fields, compact connection details, and small monochrome navigation icons. At that milestone, Refresh appeared only on Overview and Messages remained unconnected. Overview Cancel remains available on any page while status work is running; Task 008 adds separate Messages actions. The DEMO badge and offline-fixture disclosure persist across every page. Settings groups read-only router and application information.
 
 ## DITO account authentication — Task 009
 
-Open **SIMs → active DITO profile → DITO Account → Connect DITO** to open the official `https://my.dito.ph/` sign-in page in SIM Manager's isolated Qt WebEngine window. Enter the account details, CAPTCHA and OTP directly on that page and complete any required consent there. SIM Manager supplies no credentials and bypasses no challenge. The browser module and network activity start only after Connect; application startup, router Sign in and demo mode do not open the carrier browser.
+Open **Home → MyDITO Account → Connect DITO** for the active DITO SIM to open the official `https://my.dito.ph/` sign-in page in SIM Manager's isolated Qt WebEngine window. Enter the account details and complete challenges/consent on that page. The optional number/OTP helpers below require explicit actions and never submit Sign In. The browser module and network activity start only after Connect; application startup, router Sign in and demo mode do not open the carrier browser. Restarting clears the MyDITO session and account values; Home offers Connect again after recognizing the DITO profile.
 
 The authentication observer accepts only a successful official login response with strict `loginSuccess: true`, followed by navigation to the exact `/pto/home` route after the site's session/consent flow. A route alone cannot establish Connected. A request allowlist permits the official authentication and consent flow plus first-party authentication assets; subscriber details, balances, allowances, promos, purchases, password reset and external telemetry are blocked. The protected BaseLayout and Home script families are also blocked to prevent account bootstrap and subscriber-detail guards after the authentication milestone. The account website view is outside this task; the isolated browser retains only its in-memory session. Public source provenance, hashes, closed live outcomes and remaining unknowns are recorded in the [authentication evidence ledger](tests/fixtures/dito/auth-source-evidence.json) and [DITO documentation](docs/carriers/DITO.md). Controlled live sign-in confirmed this restricted authentication-only handoff.
 
 The active DITO profile shows Not connected, Sign in with DITO, Connected, Session expired or a friendly error. Rejected sign-in stays open for a manual retry. **Show sign-in** raises the existing window without another login attempt. **Cancel**, **Disconnect** and application shutdown revoke callbacks, clear the temporary OTP and dispose of the local browser context. Disconnect clears this application's isolated session; it does not claim server logout or remote token revocation. An observed authentication failure can mark expiry; returning to the sign-in page conservatively disconnects, including full document navigation. No session lifetime is assumed and no automatic login loop runs.
 
-Messages remains carrier-neutral. While sign-in is open, an existing inbox load or user **Refresh** can offer one unambiguous likely DITO OTP to the carrier adapter. If the inbox contains conflicting likely codes, select the intended SMS to narrow the candidate to that message. **Copy OTP** appears only after a match and requires a click; paste and submit on the official page yourself. There is no extra SMS polling, automatic fill or automatic submission. The historical sender/phrase rule does not verify freshness, router timezone or account ownership. Codes never appear in diagnostics or account labels. A copied code is cleared from the clipboard when its state ends or the app closes, if the clipboard still contains that code.
+Messages remains carrier-neutral. The active profile retains its existing explicit **Copy OTP** action for a likely selected-message match. Popup assistance uses a separate request-bound freshness check described below. The historical sender/phrase rule alone does not verify freshness, router timezone or account ownership. Codes never appear in diagnostics or account labels. Copied helper values are cleared when their state ends if the clipboard still contains that value.
 
 Controlled D2 reads during Task 009 returned a safe `malformed_response` outcome for a 100-record request and 20 complete messages for the chosen 20-record request. A likely OTP was present beyond the first three returned records; no code, sender, body or identifier was exported. Native Messages load and Refresh both displayed 20 complete records. These counts verify the current retrieval window, not chronological ordering or code freshness. The separate official sign-in/session check passed.
 
 The unnamed off-record profile uses memory-only cookies and cache. Passwords, OTPs and raw session material are never written to application config, logs or fixtures. SIM Manager does not extract browser cookies/tokens or read the user's normal browser profile; restarting requires sign-in again. Demo account connection changes explicitly marked synthetic states only, without a browser, credentials, network or OTPs. Task 009 implements authentication only; it does not retrieve account balances, promos or allowances.
 
+## MyDITO sign-in popup
+
+Home refreshes account data after successful sign-in, then uses the enabled
+account schedule described above. **Refresh account** uses the same isolated
+session and stays separate from router Refresh.
+Every accepted click requests fresh account getters with the existing client
+cache disabled and browser `no-store` caching. The button shows **Refreshing...**
+and stays disabled until completion. Failed reads show an explicit error while
+preserving the last successful values and their original **Last updated** time.
+Reported load, category data/SMS/call allowances and individual balance/promo-detail
+buckets keep their original values, units and expiries; no bucket totals or
+commercial promo names are inferred. **Last updated** records the successful
+local refresh time. Temporary failures retain previous values marked stale.
+Expiry shows **Sign in again**, and SIM/account changes clear old values.
+The subscriber number is compared with the active SIM entirely inside the page;
+an unavailable/mismatched binding cannot publish account data. No account data,
+subscriber IDs, phone numbers, cookies/tokens or raw responses are persisted or
+logged. Source details and live verification are in the
+[account-data plan](plans/completed/006-dito-account-data.md).
+
+The resizable popup keeps its compact card at 88% WebEngine zoom. Its native SIM
+helper adds only its own height above the card, preserving the compact viewport
+and Cancel outside the page.
+The official MyDITO popup centers its recognized SMS sign-in card and hides safe
+navigation, marketing and footer clutter. Original MyDITO fields and actions
+remain intact, including accessible Terms and Privacy links. An unfamiliar layout
+or visible security/consent dialog restores
+the full page, and Cancel sign-in stays available outside the web content.
+The [focused-card plan](plans/completed/003-dito-login-popup.md) and
+[compact sizing plan](plans/completed/004-dito-popup-compact.md) record the file
+inventories and verification results.
+
+The selector shows saved SIM names, carriers and full numbers. The inserted SIM
+is highlighted; other profiles are disabled. **Copy Number** is available for the
+current DITO profile and removes exactly one initial `0` for MyDITO without
+changing the saved number.
+
+After you click the official **Get SMS Code**, the helper uses the existing inbox
+worker to check every two seconds for up to five minutes. Its first complete
+post-request read is baseline-only; a new unambiguous DITO code observed afterward
+enables **Fill OTP** and **Copy OTP**. An OTP already present in the baseline is
+conservatively ignored. **Fill OTP** writes only the original SMS Code field and
+leaves Sign In for you to click. Unfamiliar fields/challenges disable filling;
+Copy OTP and manual entry remain available. SIM changes, cancellation, sign-in
+completion and expiry revoke temporary helper state. No number, OTP, SMS body or
+clipboard contents enter logs or application files through the helper. The
+[helper plan](plans/completed/005-dito-sign-in-helpers.md) records verification.
+
 ## Install and launch on Windows
+
 
 From the `sim-manager` repository root in PowerShell:
 
@@ -119,7 +250,7 @@ Task 005 adds the normalized Device boundary: immutable SIM, network, radio, WAN
 
 Authentication is an injected session contract, separate from the models/parser and SMS transport. `LiveDeviceService` now composes the production `D2Session` directly; it has no browser-session dependency. The default `D2StatusClient().get_device_state()` returns authentication-required unknown state and performs no I/O; it never copies browser Authorization values. An injected session must honor the shared monotonic deadline (default 20 seconds), cancellation, 256 KiB response limit, TLS verification, redirect rejection, and connection cleanup. The client cannot preempt arbitrary injected code that ignores that contract.
 
-The backend and services remain independent of GUI/browser packages; importing the backend does not connect to a router or carrier. The optional desktop shell uses PySide6, and DITO-specific browser/endpoint rules live behind the carrier adapter. Authentication state crosses the service boundary through closed neutral models. No account-data retrieval, storage or carrier mapping is included. Manual development probes remain separate from runtime and never run at application startup.
+The backend and services remain independent of GUI/browser packages; importing the backend does not connect to a router or carrier. The optional desktop shell uses PySide6, and DITO-specific browser/endpoint rules live behind the carrier adapter. Authentication and reported account values cross the service boundary through neutral opaque models. Account data and session material remain in memory; no account persistence or automatic carrier mapping is included. Manual development probes remain separate from runtime and never run at application startup.
 
 ```text
 src/sim_manager/
@@ -195,7 +326,7 @@ The final command clears the test-only platform override so a later native launc
 The separate router development probe and production DITO authentication observer have offline tests using Node's built-in test runner:
 
 ```powershell
-node --test tests/test_d2_browser_probe.js tests/test_dito_auth_observer.js
+node --test tests/test_d2_browser_probe.js tests/test_dito_auth_observer.js tests/test_dito_login_focus.js tests/test_dito_sms_helper.js tests/test_dito_account_data.js
 ```
 
 No npm packages are required. The Python standard-library suite remains independent of Node and browser packages; it does not execute these JavaScript tests.

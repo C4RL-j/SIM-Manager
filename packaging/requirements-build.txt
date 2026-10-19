@@ -1,0 +1,12 @@
+# Windows x64 release environment. Python 3.13.15 was used for v0.1.0.
+PyInstaller==6.22.3
+pyinstaller-hooks-contrib==2026.8
+Pillow==13.0.0
+PySide6-Essentials==6.11.2
+PySide6-Addons==6.11.2
+shiboken6==6.11.2
+altgraph==0.17.5
+packaging==26.3
+pefile==2024.8.26
+pywin32-ctypes==0.2.3
+setuptools==84.0.0

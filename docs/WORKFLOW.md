@@ -4,9 +4,81 @@ The repository root is `C:\PROJECTs\SIM-manager_workspace\sim-manager`. Run proj
 
 The legacy tree is read-only reference material. Copy approved reusable code into `src/sim_manager/`; never import from the legacy tree at runtime. Compare before/after file lists and SHA-256 hashes when verifying that legacy files remain unchanged.
 
-Read `AGENTS.md`, the relevant docs, and the active plan before changing code. Implement only the approved task. Tasks 001–008 and 006.1 completed the transport foundation, scoped read-only hardware/firmware discovery, carrier-neutral device state, direct D2 authentication/live status, native PySide6 shell and neutral read-only Messages with explicit demo isolation. Task 009 completes only DITO authentication/session lifecycle with controlled live account validation. Account data, carrier detection, Smart, persistence and Task 010 remain deferred.
+Read `AGENTS.md`, the relevant docs, and the active plan before changing code. Implement only the approved task. Tasks 001–008 and 006.1 completed the transport foundation, scoped read-only hardware/firmware discovery, carrier-neutral device state, direct D2 authentication/live status, native PySide6 shell and neutral read-only Messages with explicit demo isolation. Task 009 completed only DITO authentication/session lifecycle with controlled live account validation. Account data, carrier detection, Smart, persistence and Task 010 were deferred at that checkpoint; later separately authorized work is documented below without changing that historical evidence.
+
+## Automatic account refresh and tray — separately authorized
+
+Use the existing official MyDITO account reader and normalized runtime state.
+Home, tray and automatic refresh must share one scheduler and in-flight service
+slot; opening the tray must not create a reader, browser or additional request.
+Normal mode defaults to automatic account refresh every thirty seconds, with
+fifteen/thirty/sixty-second choices and an off toggle in Settings. Schedule only
+for the current inserted DITO profile with a validated live account. Keep router
+status and SMS reads independent; do not add periodic diagnostic/SMS retrieval,
+silent login, OTP requests/filling/submission, Smart or account mutations.
+
+Test scheduling with controlled clocks and synthetic asynchronous readers:
+post-sign-in refresh without duplicates, overlap/manual coordination, interval
+changes, temporary failures and exponential backoff, HTTP 429/Retry-After,
+success recovery, expiry and SIM/account revision changes. Keep prior verified
+values and successful timestamps stale after temporary failures; never derive
+allowance totals or percentages from names or aggregate buckets. Progress stays
+hidden when the normalized account model supplies no verified total.
+
+Tray tests use fake icons and synthetic snapshots. Cover toggle/second-click,
+outside-click/Escape dismissal, context-menu actions, work-area/DPI placement,
+long/missing/stale values and full shutdown cleanup. Close-to-tray is explicitly
+configurable and defaults on for new installs; unsupported tray availability must preserve the stored
+choice while disabling hiding and explaining normal exit. Verify timers continue
+while hidden only for eligible existing sessions, and explicit Exit stops timers,
+disposes the local session and retains the bounded worker-join behavior.
+
+Persist only automatic-refresh enabled, interval and close-to-tray in native
+current-user Qt settings. GUI tests must inject memory stores or isolated INI
+settings, never read or alter the user's real preference registry, vault or
+profiles. Verify strict bad-value defaults and closed save failures without
+private output. Credentials, account data, OTPs, SMS, cookies and tokens remain
+outside this store; process restart still requires official MyDITO sign-in.
+
+The module launcher uses a current-user process lock and restricted local
+activation channel. Test with unique temporary lock directories/server names;
+a second launch must activate the owner without creating duplicate sessions,
+timers or tray icons. Only the fixed activation message may cross IPC. Run the
+relevant backend/service, GUI and JavaScript suites, packaging/resource checks
+and native synthetic tray/lifecycle validation. Record actual totals and any
+environment limitations in the task plan; do not force live rate limits/expiry
+or retain real account/SMS captures to validate this behavior.
+
+## Windows portable releases
+
+Use `tools/Build-Portable.ps1` with the pinned environment in
+`packaging/requirements-build.txt`. Build into a fresh timestamped `dist/portable`
+directory, including the actual Qt WebEngine process/resources/locales, icon,
+version metadata and third-party notices. Do not publish environments, build
+logs, smoke reports, discovery captures, account data or local preferences.
+
+Run the source suites and the packaged EXE's explicit `--release-smoke REPORT`
+diagnostic against synthetic memory providers and a network-blocked blank
+WebEngine page. This mode bypasses production stores and instance activation;
+it must not read credentials or close a user's existing session. Review the ZIP,
+source/history, signing status and checksum before creating a public release.
+Verify the uploaded repository/tag/assets and a downloaded checksum afterward.
+
+Start with Windows is opt-in and available only for the frozen Windows app.
+Tests inject its registry backend and must never write the user's actual Run key.
+New installs keep running in the tray when closed; saved choices remain intact.
 
 ## D2 router login UX — separately authorized
+
+The current Home account-data request separately authorizes only source-verified
+read-only DITO account getters in the existing isolated session. Keep subscriber
+IDs/number comparisons/signing inside the page, and export only bounded reported
+display values through neutral models. Tests use synthetic client responses and
+offline browser/service fakes. Run all three suites before one controlled live
+sign-in/account-read cycle. User credentials/codes stay on the official page;
+record only field presence/counts and closed outcomes, without live screenshots,
+raw payloads, private error text or retained snapshots. Do not force expiry or
+change account/router settings. Other carriers and tasks remain deferred.
 
 The current small request authorizes only router admin password visibility, opt-in Windows Credential Manager storage, one startup sign-in attempt and Forget. Keep this distinct from the completed MyDITO task and do not start Task 010. Never write real admin fields into application files/databases, fixtures, docs, logs, exception text or tool output. The eye does not copy credentials. Backend/service/GUI tests use synthetic providers and vaults; normal GUI composition is guarded from real credential-store access during tests.
 
@@ -74,7 +146,37 @@ contents, syntax, privacy, diff/whitespace and legacy integrity. Record results
 in the dedicated SIM-first plan. History is only a placeholder; Smart support,
 account-data retrieval and Task 12 remain outside this refactor.
 
+## MyDITO popup presentation checks
+
+The separately authorized Home dashboard simplification keeps SIMs, Messages,
+History, authentication and retrieval unchanged. Verify data/promo prominence,
+the three-cell network-evidence strip, load-versus-promo expiry separation,
+collapsed Settings diagnostics retaining every normalized field and no new I/O on
+disclosure. Run source/backend, GUI and Node regression suites, then native
+synthetic layouts at normal/minimum size, long content, missing data and expanded
+details. Never capture live account/profile/SMS content for visual checks. Check
+for horizontal overflow instead of merely hiding scrollbars. Account refresh,
+stale/failure/expiry handling and all existing monitor values must remain covered.
+
+MyDITO popup styling is tested with synthetic layout/control structures and the
+existing fake WebEngine boundary. Check original node preservation, unknown-page
+fallback, visible challenge/consent fallback, route/origin guards and cancellation.
+Do not inspect auth APIs or credential/OTP values for a presentation change.
+Public-page visual validation must use a fresh unauthenticated profile without
+user input; never retain screenshots of populated login fields or sessions.
+
+SIM/OTP helper verification uses synthetic saved profiles, inboxes and clipboard
+objects. Cover one-zero formatting, baseline/ambiguity/expiry, shared-worker read
+ownership, disabled spare profiles, explicit fill, old-document/request callbacks
+and private error handling. Only the current helper request authorizes filling
+the original OTP input; no automatic submission or auth API investigation.
+Native input-event tests may use an offline synthetic DOM with external requests
+blocked. Public-page checks remain fresh/empty, with only synthetic profile
+metadata and no real SMS request, OTP entry or credentials. Keep existing styling
+and auth policy/session behavior unchanged and record incremental file hashes.
+
 ## Offline transport tests
+
 
 Use Python 3.11 or later. The transport has no runtime dependencies, and its tests use only the standard library. No package installation, GUI/browser package, or router connection is needed:
 

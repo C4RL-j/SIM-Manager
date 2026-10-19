@@ -1,0 +1,2 @@
+# Preserve upstream notice bytes so recorded license hashes survive Windows clones.
+packaging/licenses/** -text whitespace=cr-at-eol

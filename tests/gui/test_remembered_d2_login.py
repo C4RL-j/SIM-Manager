@@ -322,7 +322,7 @@ class RememberedD2LoginTests(DesktopCase):
         self.assertEqual(window.status_label.text(), "Authentication required")
         self.assertTrue(window.settings_page.forget_login_button.isHidden())
         self.assertEqual(account.state.phase, AccountPhase.CONNECTED)
-        self.assertEqual(window.sims_page.account_controls.status_label.text(), "Connected")
+        self.assertEqual(window.home_page.account_controls.status_label.text(), "Connected")
         self.assertEqual(window.sim_profiles.active_profile.profile_id, active_id)
         self.assertEqual(window.sim_profiles.active_profile.account_state.phase, AccountPhase.CONNECTED)
         self.assertEqual((account.connections, account.disconnections, account.cancellations), (0, 0, 0))

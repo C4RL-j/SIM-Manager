@@ -1,13 +1,16 @@
 """Offline service/demo and privacy-safe presentation behavior."""
 
+from contextlib import redirect_stderr, redirect_stdout
 from dataclasses import FrozenInstanceError, asdict, replace
 from datetime import datetime, timezone
 from importlib.resources import files
+from io import StringIO
 from pathlib import Path
 from threading import Event
 import unittest
 from unittest.mock import patch
 
+from sim_manager.account_models import AccountBucket, AccountData, AccountPromo
 from sim_manager.devices.d2.demo import load_demo_state
 from sim_manager.devices.d2.status_parser import SOURCE_KEYS
 from sim_manager.models import (
@@ -18,7 +21,7 @@ from sim_manager.models import (
 from sim_manager.services.device import (
     DemoDeviceService, LiveDeviceService, RefreshCancelled,
 )
-from sim_manager.services.presentation import present_device
+from sim_manager.services.presentation import present_device, present_promo_expiry
 
 
 PRIVATE = "SYNTHETIC_PRIVATE_VALUE"
@@ -167,6 +170,30 @@ class PresentationTests(unittest.TestCase):
         self.assertEqual((view.rsrp, view.secondary_rsrp, view.rsrq, view.rssi, view.sinr, view.bands), ("—",) * 6)
         self.assertEqual(view.router_status, "Router status unavailable")
 
+    def test_only_explicit_absence_or_required_pin_can_report_sim_not_ready(self):
+        cases = (
+            (SimState(present=False), "Not Ready"),
+            (SimState(present=False, readiness=Readiness.READY), "Not Ready"),
+            (SimState(pin_state=PinState.PIN_REQUIRED), "Not Ready"),
+            (SimState(pin_state=PinState.PUK_REQUIRED, readiness=Readiness.READY), "Not Ready"),
+            (SimState(present=True), "Unknown"),
+            (SimState(pin_check_enabled=True), "Unknown"),
+            (SimState(present=0), "Unknown"),
+            (SimState(pin_state="pin_required"), "Unknown"),
+            (SimState(readiness=Readiness.READY), "Ready"),
+            (SimState(present=True, readiness=Readiness.READY), "Ready"),
+        )
+        for sim, expected in cases:
+            with self.subTest(expected=expected):
+                self.assertEqual(present_device(known_state(sim=sim)).sim_state, expected)
+
+    def test_successful_router_or_connected_wan_does_not_establish_mobile_network(self):
+        view = present_device(known_state(network=NetworkState()))
+        self.assertEqual(view.router_status, "Status available")
+        self.assertEqual(view.wan_state, "Connected")
+        self.assertEqual(view.network_mode, "Unknown")
+        self.assertEqual(view.network_status, "Unknown")
+
     def test_partial_retrieval_preserves_successful_fields(self):
         view = present_device(known_state(successful_sources=("wanStatus",), partial=True))
         self.assertEqual(view.rsrp, "-91")
@@ -268,6 +295,63 @@ class PresentationTests(unittest.TestCase):
         view = present_device(PRIVATE)
         self.assertEqual(view.notice, "Unknown error")
         self.assertNotIn(PRIVATE, repr(asdict(view)))
+
+
+class PromoExpiryPresentationTests(unittest.TestCase):
+    def test_load_expiry_never_becomes_promo_expiry_and_one_reported_promo_keeps_its_date(self):
+        load = AccountData(updated_at=FIRST, expiry="2029-12-31")
+        self.assertEqual(present_promo_expiry(None), "Not available")
+        self.assertEqual(present_promo_expiry(PRIVATE), "Not available")
+        self.assertEqual(present_promo_expiry(load), "Not available")
+        promo = replace(load, active_promos=(AccountPromo("Synthetic plan", "2026-11-01"),))
+        self.assertEqual(present_promo_expiry(promo), "2026-11-01")
+        self.assertEqual(promo.expiry, "2029-12-31")
+
+    def test_multiple_and_partial_promo_dates_keep_each_label_without_choosing_one_date(self):
+        data = AccountData(updated_at=FIRST, active_promos=(
+            AccountPromo("Synthetic later plan", "2026-12-01"),
+            AccountPromo("Synthetic unknown plan"),
+            AccountPromo("Synthetic earlier plan", "2026-10-30"),
+        ), data_buckets=(AccountBucket("Synthetic bucket", "2 GB", "2026-10-20"),))
+        self.assertEqual(present_promo_expiry(data),
+                         "Synthetic later plan: 2026-12-01\n"
+                         "Synthetic unknown plan: Not available\n"
+                         "Synthetic earlier plan: 2026-10-30")
+
+    def test_data_bucket_fallback_uses_reported_units_not_names_or_sms_call_expiries(self):
+        data = AccountData(updated_at=FIRST, expiry="2029-12-31", data_buckets=(
+            AccountBucket("Synthetic 5G data name", "10 SMS", "2026-10-01"),
+            AccountBucket("Synthetic data name", "5 mins", "2026-10-02"),
+            AccountBucket("Synthetic GB name", "Unlimited", "2026-10-03"),
+            AccountBucket("Synthetic unknown unit", "10", "2026-10-04"),
+            AccountBucket("Synthetic later allowance", "1,024.00 MiB", "2026-12-01"),
+            AccountBucket("Synthetic undated allowance", "0.00 GB"),
+            AccountBucket("Synthetic earlier allowance", "2 GB", "2026-11-01"),
+        ))
+        self.assertEqual(present_promo_expiry(data),
+                         "Synthetic later allowance: 2026-12-01\n"
+                         "Synthetic undated allowance: Not available\n"
+                         "Synthetic earlier allowance: 2026-11-01")
+        for quantity in ("1 B", "2 kB", "3 KB", "4 MB", "5 TB", "6 KiB", "7 GiB"):
+            single = replace(data, data_buckets=(AccountBucket("Synthetic bucket", quantity, "2026-11-02"),))
+            self.assertEqual(present_promo_expiry(single), "Synthetic bucket: 2026-11-02")
+
+    def test_missing_ambiguous_dates_are_unavailable_and_display_text_is_never_logged(self):
+        for quantity in (None, "Unlimited", "1 GB per day", "GB", "10 calls"):
+            data = AccountData(updated_at=FIRST, active_promos=(AccountPromo("Synthetic plan"),),
+                               data_buckets=(AccountBucket("Synthetic data", quantity, "2026-11-01"),))
+            self.assertEqual(present_promo_expiry(data), "Not available")
+        undated = AccountData(updated_at=FIRST, data_buckets=(AccountBucket("Synthetic", "1 GB"),))
+        self.assertEqual(present_promo_expiry(undated), "Not available")
+        literal = AccountData(updated_at=FIRST, data_buckets=(
+            AccountBucket("<b>Synthetic reported label</b>", "1 GB", "2026-11-01"),
+        ))
+        output = StringIO()
+        with redirect_stdout(output), redirect_stderr(output), self.assertNoLogs(level="DEBUG"):
+            label = present_promo_expiry(literal)
+        self.assertEqual(label, "<b>Synthetic reported label</b>: 2026-11-01")
+        self.assertEqual(output.getvalue(), "")
+        self.assertNotIn("Synthetic reported label", repr(literal))
 
 
 if __name__ == "__main__":

@@ -1,6 +1,7 @@
 """Offline inbox GUI/lifecycle tests; every message is explicitly synthetic."""
 
 from contextlib import redirect_stderr, redirect_stdout
+from datetime import datetime, timezone
 import io
 import threading
 import time
@@ -8,7 +9,7 @@ from unittest.mock import patch
 
 from PySide6.QtCore import Qt
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QLabel, QPushButton
+from PySide6.QtWidgets import QLabel, QPlainTextEdit, QPushButton
 
 from test_desktop import DesktopCase, known_snapshot
 from sim_manager.message_models import Message, MessageInbox, MessageIssueCode
@@ -83,32 +84,108 @@ class MessageGuiTests(DesktopCase):
         self.load_messages(window)
         self.assertEqual(len(provider.calls), 1)
         self.assertEqual(window.messages_page.message_list.count(), 2)
-        self.assertEqual(window.messages_page.status_label.text(), "2 messages")
+        self.assertEqual(window.messages_page.status_label.text(), "2 messages · Inbox loaded from router")
         self.assertEqual(window.status_label.text(), "Authentication required")
         self.assertFalse(window.refresh_controller.busy)
         for page in (4, 0, 2):
             window.navigation.setCurrentRow(page)
         self.assertEqual(len(provider.calls), 1)
 
-    def test_selecting_rows_displays_full_plain_text_without_link_or_html_handling(self):
+    def test_single_click_selects_but_double_click_and_enter_open_plain_text_details(self):
         window = self.message_window()
         self.load_messages(window)
         page = window.messages_page
-        page.message_list.setCurrentRow(1)
-        self.assertEqual(page.sender_label.text(), "Example sender")
-        self.assertEqual(page.timestamp_label.text(), "2026-10-07 11:00:00")
-        self.assertEqual(page.content_view.toPlainText(), "<b>Synthetic plain text</b>\nhttps://example.invalid/")
-        self.assertTrue(page.content_view.isReadOnly())
-        for label in (page.sender_label, page.timestamp_label, page.status_label):
+        selected = []
+        page.message_selected.connect(selected.append)
+        rectangle = page.message_list.visualItemRect(page.message_list.item(1))
+        QTest.mouseClick(page.message_list.viewport(), Qt.MouseButton.LeftButton, pos=rectangle.center())
+        self.assertIs(selected[-1], page._messages[1])
+        self.assertIsNone(page.details_dialog)
+        for old_preview in ("sender_label", "timestamp_label", "content_view"):
+            self.assertFalse(hasattr(page, old_preview))
+        self.assertEqual(page.findChildren(QPlainTextEdit), [])
+        QTest.mouseDClick(page.message_list.viewport(), Qt.MouseButton.LeftButton, pos=rectangle.center())
+        self.wait_until(lambda: page.details_dialog is not None)
+        details = page.details_dialog
+        self.assertEqual(details.sender_label.text(), "Example sender")
+        self.assertEqual(details.timestamp_label.text(), "Oct 7, 2026 · 11:00 AM")
+        self.assertEqual(details.content_view.toPlainText(), "<b>Synthetic plain text</b>\nhttps://example.invalid/")
+        self.assertTrue(details.content_view.isReadOnly())
+        for label in (details.sender_label, details.timestamp_label, page.status_label):
             self.assertEqual(label.textFormat(), Qt.TextFormat.PlainText)
+        QTest.keyClick(details, Qt.Key.Key_Escape)
+        self.wait_until(lambda: page.details_dialog is None)
+        page.message_list.setFocus()
+        QTest.keyClick(page.message_list, Qt.Key.Key_Return)
+        self.wait_until(lambda: page.details_dialog is not None)
+        self.assertEqual(page.details_dialog.content_view.toPlainText(), "<b>Synthetic plain text</b>\nhttps://example.invalid/")
+        page.details_dialog.close_button.click()
+        self.wait_until(lambda: page.details_dialog is None)
 
-    def test_list_preview_is_compact_but_selected_content_remains_complete(self):
+    def test_list_preview_is_compact_but_opened_content_remains_complete(self):
         body = "Synthetic sentence. " * 30
         provider = self.message_provider(MessageInbox(messages=(Message(sender="Sample", body=body),)))
         window = self.message_window(provider)
         self.load_messages(window)
-        self.assertLess(len(window.messages_page.message_list.item(0).text()), 160)
-        self.assertEqual(window.messages_page.content_view.toPlainText(), body)
+        self.assertLess(len(window.messages_page.message_list.item(0).text()), len(body))
+        self.assertIsNone(window.messages_page.details_dialog)
+        window.messages_page.open_selected_message()
+        self.assertEqual(window.messages_page.details_dialog.content_view.toPlainText(), body)
+
+    def test_two_line_rows_and_inbox_expand_without_horizontal_overflow(self):
+        messages = tuple(Message(
+            sender="Synthetic service " + "W" * 80,
+            timestamp=f"2026-10-08 10:{minute:02d}:00",
+            body="Synthetic preview " * 40,
+        ) for minute in range(20))
+        window = self.message_window(self.message_provider(MessageInbox(messages=messages)))
+        window.resize(840, 600)
+        self.load_messages(window)
+        page = window.messages_page
+        self.application.processEvents()
+        small_height = page.message_list.height()
+        first = page.message_list.item(0)
+        self.assertEqual(first.text().count("\n"), 1)
+        self.assertGreaterEqual(page.message_list.visualItemRect(first).height(),
+                                2 * page.message_list.fontMetrics().height())
+        self.assertLessEqual(page.message_list.visualItemRect(first).height(),
+                             3 * page.message_list.fontMetrics().lineSpacing() + 40)
+        self.assertEqual(page.message_list.horizontalScrollBar().maximum(), 0)
+        scroller = window.pages.widget(2)
+        self.assertEqual(scroller.horizontalScrollBar().maximum(), 0)
+        window.resize(1000, 850)
+        self.application.processEvents()
+        self.assertGreater(page.message_list.height(), small_height + 100)
+        self.assertEqual(page.message_list.horizontalScrollBar().maximum(), 0)
+        self.assertEqual(scroller.horizontalScrollBar().maximum(), 0)
+        self.assertIsNone(page.details_dialog)
+
+    def test_newest_first_sort_requires_all_comparable_unambiguous_iso_timestamps(self):
+        window = self.message_window()
+        self.load_messages(window)
+        page = window.messages_page
+
+        def display_order(timestamps):
+            rows = tuple(Message(identity=str(index), timestamp=timestamp, body="Synthetic body")
+                         for index, timestamp in enumerate(timestamps))
+            page.render(MessageInbox(messages=rows))
+            return [message.identity for message in page._messages]
+
+        self.assertEqual(display_order(("2026-10-07 11:00:00", "2026-10-08 10:00:00",
+                                        "2026-10-08 10:00:00")), ["1", "2", "0"])
+        self.assertEqual(display_order(("2026-10-08T12:00:00+08:00", "2026-10-08T05:00:00Z")),
+                         ["1", "0"])
+        for timestamps in (
+            ("2026-10-07 11:00:00", "08/10/2026 10:00:00"),
+            ("2026-10-07 11:00:00", None),
+            ("2026-10-07 11:00:00", "2026-10-08T10:00:00+08:00"),
+            ("2026-10-07 11:00:00", "2026-02-31 10:00:00"),
+            ("2026-10-07T11:00:00Z", "2026-10-08T10:00:00-00:00"),
+            ("2026-10-07T11:00:00Z", "2026-10-08T10:00:00-0000"),
+            ("2026-10-07T11:00:00Z", "2026-10-08T10:00:00+08:99"),
+        ):
+            with self.subTest(timestamps=timestamps):
+                self.assertEqual(display_order(timestamps), ["0", "1"])
 
     def test_missing_fields_and_empty_body_have_safe_friendly_labels(self):
         window = self.message_window(self.message_provider(MessageInbox(messages=(Message(),))))
@@ -117,17 +194,29 @@ class MessageGuiTests(DesktopCase):
         self.assertIn("Unknown sender", page.message_list.item(0).text())
         self.assertIn("Unknown time", page.message_list.item(0).text())
         self.assertIn("(Empty message)", page.message_list.item(0).text())
-        self.assertEqual(page.content_view.toPlainText(), "")
+        self.assertIsNone(page.details_dialog)
+        page.open_selected_message()
+        self.assertEqual(page.details_dialog.content_view.toPlainText(), "")
+        self.assertEqual(page.details_dialog.sender_label.text(), "Unknown sender")
+        self.assertEqual(page.details_dialog.timestamp_label.text(), "Unknown time")
 
     def test_zero_messages_clears_a_previous_inbox_only_on_success(self):
         provider = self.message_provider()
         window = self.message_window(provider)
         self.load_messages(window)
+        page = window.messages_page
+        page.open_selected_message()
+        previous_details = page.details_dialog
+        cleared = []
+        previous_details.finished.connect(lambda _: cleared.append(previous_details.content_view.toPlainText() == ""))
+        previous_refresh = page.last_refreshed_at
         provider.inbox = MessageInbox()
         self.assertTrue(window.start_messages_refresh())
         self.wait_until(lambda: not window.messages_controller.busy)
         self.assertEqual(window.messages_page.message_list.count(), 0)
-        self.assertEqual(window.messages_page.content_view.toPlainText(), "")
+        self.assertIsNone(page.details_dialog)
+        self.assertEqual(cleared, [True])
+        self.assertGreater(page.last_refreshed_at, previous_refresh)
         self.assertEqual(window.messages_page.empty_label.text(), "No messages")
         self.assertTrue(window.messages_page.empty_label.isVisible())
 
@@ -171,19 +260,41 @@ class MessageGuiTests(DesktopCase):
         provider = self.message_provider()
         overview = self.provider()
         window = self.message_window(provider, snapshot_provider=overview)
+        self.assertIsNone(window.messages_page.last_refreshed_at)
+        before = datetime.now(timezone.utc)
         self.load_messages(window)
+        page = window.messages_page
+        self.assertIsInstance(page.last_refreshed_at, datetime)
+        self.assertIsNotNone(page.last_refreshed_at.utcoffset())
+        self.assertGreaterEqual(page.last_refreshed_at, before)
+        self.assertLessEqual(page.last_refreshed_at, datetime.now(timezone.utc))
+        self.assertTrue(page.last_refresh_label.text())
+        previous_refresh = page.last_refreshed_at
+        page.open_selected_message()
+        previous_details = page.details_dialog
+        cleared = []
+        previous_details.finished.connect(lambda _: cleared.append(previous_details.content_view.toPlainText() == ""))
         provider.inbox = MessageInbox(messages=(Message(sender="Another sample", body="Synthetic replacement"),))
         QTest.mouseClick(window.messages_page.refresh_button, Qt.MouseButton.LeftButton)
         self.wait_until(lambda: len(provider.calls) == 2 and not window.messages_controller.busy)
         self.assertEqual(window.messages_page.message_list.count(), 1)
-        self.assertEqual(window.messages_page.content_view.toPlainText(), "Synthetic replacement")
+        self.assertGreater(page.last_refreshed_at, previous_refresh)
+        self.assertIsNone(page.details_dialog)
+        self.assertEqual(cleared, [True])
+        page.open_selected_message()
+        self.assertEqual(page.details_dialog.content_view.toPlainText(), "Synthetic replacement")
         self.assertEqual(overview.calls, [])
 
     def test_closed_failure_states_preserve_existing_messages_and_selection(self):
         provider = self.message_provider()
         window = self.message_window(provider)
         self.load_messages(window)
-        window.messages_page.message_list.setCurrentRow(1)
+        page = window.messages_page
+        page.message_list.setCurrentRow(1)
+        page.open_selected_message()
+        details = page.details_dialog
+        successful_refresh = page.last_refreshed_at
+        successful_label = page.last_refresh_label.text()
         expected = {
             MessageIssueCode.UNREACHABLE: "Router unavailable",
             MessageIssueCode.UNAVAILABLE: "SMS service unavailable",
@@ -200,7 +311,10 @@ class MessageGuiTests(DesktopCase):
                 self.assertEqual(window.messages_page.status_label.text(), message)
                 self.assertEqual(window.messages_page.message_list.count(), 2)
                 self.assertEqual(window.messages_page.message_list.currentRow(), 1)
-                self.assertEqual(window.messages_page.sender_label.text(), "Example sender")
+                self.assertIs(page.details_dialog, details)
+                self.assertEqual(details.sender_label.text(), "Example sender")
+                self.assertEqual(page.last_refreshed_at, successful_refresh)
+                self.assertEqual(page.last_refresh_label.text(), successful_label)
 
     def test_partial_result_renders_readable_rows_and_warns(self):
         provider = self.message_provider(MessageInbox(messages=(Message(body="Synthetic readable row"),), partial=True, issues=(MessageIssueCode.MALFORMED_ENTRY,)))
@@ -208,21 +322,28 @@ class MessageGuiTests(DesktopCase):
         self.load_messages(window)
         self.assertEqual(window.messages_page.message_list.count(), 1)
         self.assertEqual(window.messages_page.status_label.text(), "Some messages could not be read")
+        self.assertIsInstance(window.messages_page.last_refreshed_at, datetime)
 
     def test_unreadable_partial_does_not_claim_a_previous_inbox_is_empty(self):
         provider = self.message_provider()
         window = self.message_window(provider)
         self.load_messages(window)
+        previous_refresh = window.messages_page.last_refreshed_at
+        previous_label = window.messages_page.last_refresh_label.text()
         provider.inbox = MessageInbox(partial=True, issues=(MessageIssueCode.MALFORMED_ENTRY,))
         window.start_messages_refresh()
         self.wait_until(lambda: not window.messages_controller.busy)
         self.assertEqual(window.messages_page.message_list.count(), 2)
         self.assertEqual(window.messages_page.status_label.text(), "Some messages could not be read")
+        self.assertEqual(window.messages_page.last_refreshed_at, previous_refresh)
+        self.assertEqual(window.messages_page.last_refresh_label.text(), previous_label)
 
     def test_cancellation_preserves_inbox_and_blocks_late_success(self):
         provider = self.message_provider()
         window = self.message_window(provider)
         self.load_messages(window)
+        previous_refresh = window.messages_page.last_refreshed_at
+        previous_label = window.messages_page.last_refresh_label.text()
         provider.blocked = True
         window.start_messages_refresh()
         self.wait_until(lambda: len(provider.calls) == 2)
@@ -232,6 +353,8 @@ class MessageGuiTests(DesktopCase):
         self.assertEqual(window.messages_page.message_list.count(), 2)
         self.assertEqual(window.messages_page.status_label.text(), "Messages refresh cancelled")
         self.assertTrue(window.messages_page.refresh_button.isEnabled())
+        self.assertEqual(window.messages_page.last_refreshed_at, previous_refresh)
+        self.assertEqual(window.messages_page.last_refresh_label.text(), previous_label)
 
     def test_cancel_after_worker_finishes_discards_queued_result(self):
         provider = self.message_provider()
@@ -242,6 +365,7 @@ class MessageGuiTests(DesktopCase):
         self.wait_until(lambda: not window.messages_controller.busy)
         self.assertEqual(window.messages_page.message_list.count(), 0)
         self.assertEqual(window.messages_page.status_label.text(), "Messages refresh cancelled")
+        self.assertIsNone(window.messages_page.last_refreshed_at)
 
     def test_unknown_worker_exceptions_never_print_or_display_private_text(self):
         for error in (RuntimeError(PRIVATE_ERROR), SystemExit(PRIVATE_ERROR), TimeoutError(PRIVATE_ERROR)):
@@ -253,6 +377,7 @@ class MessageGuiTests(DesktopCase):
             hook.assert_not_called()
             self.assertNotIn(PRIVATE_ERROR, output.getvalue() + self.displayed_text(window))
             self.assertEqual(window.messages_page.message_list.count(), 0)
+            self.assertIsNone(window.messages_page.last_refreshed_at)
 
     def test_wrong_or_mistyped_normalized_result_fails_safely(self):
         for inbox in ({"private": PRIVATE_ERROR}, MessageInbox(messages=None)):
@@ -295,6 +420,7 @@ class MessageGuiTests(DesktopCase):
         self.load_messages(window)
         self.assertEqual(window.messages_page.message_list.count(), 0)
         self.assertTrue(window.demo_label.isHidden())
+        self.assertIsNone(window.messages_page.last_refreshed_at)
 
     def test_demo_mode_cannot_start_an_injected_live_message_provider(self):
         provider = self.message_provider()
@@ -315,6 +441,10 @@ class MessageGuiTests(DesktopCase):
         provider = self.message_provider()
         window = self.message_window(provider, snapshot_provider=overview)
         self.load_messages(window)
+        window.messages_page.open_selected_message()
+        details = window.messages_page.details_dialog
+        cleared = []
+        details.finished.connect(lambda _: cleared.append(details.content_view.toPlainText() == ""))
         provider.blocked = True
         provider.finished.clear()
         window.start_refresh()
@@ -328,7 +458,9 @@ class MessageGuiTests(DesktopCase):
         self.assertTrue(provider.calls[-1][1].is_set())
         self.assertTrue(overview.calls[-1][1].is_set())
         self.assertEqual(window.messages_page.message_list.count(), 0)
-        self.assertEqual(window.messages_page.content_view.toPlainText(), "")
+        self.assertIsNone(window.messages_page.details_dialog)
+        self.assertEqual(cleared, [True])
+        self.assertIsNone(window.messages_page.last_refreshed_at)
         self.assertEqual(window.messages_page._messages, ())
         self.assertTrue(window.messages_controller._output.empty())
         self.assertFalse(window.start_messages_refresh())

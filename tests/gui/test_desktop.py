@@ -126,6 +126,11 @@ class DesktopCase(unittest.TestCase):
             "sim_manager.storage.sim_profiles.WindowsSimProfileStore.save",
             side_effect=AssertionError("Real SIM profile storage forbidden"),
         ))
+        from sim_manager.ui.preferences import AppPreferences, MemoryPreferencesStore
+        self.guards.enter_context(patch(
+            "sim_manager.ui.preferences.QtPreferencesStore",
+            side_effect=lambda: MemoryPreferencesStore(AppPreferences(auto_refresh=False)),
+        ))
         self.windows = []
         self.providers = []
         self.addCleanup(self.clean_windows)
@@ -134,7 +139,7 @@ class DesktopCase(unittest.TestCase):
         for provider in self.providers:
             provider.release.set()
         for window in self.windows:
-            window.close()
+            window.request_exit()
             window.refresh_controller.shutdown(timeout=1.0)
             window.deleteLater()
         self.application.processEvents()
@@ -163,7 +168,7 @@ class DesktopCase(unittest.TestCase):
         self.application.processEvents()
 
     def values(self, window):
-        return {key: label.text() for key, label in window.home_page.values.items()}
+        return {key: label.text() for key, label in window.settings_page.connection_values.items()}
 
     def displayed_text(self, window):
         text = [window.windowTitle()]
@@ -432,18 +437,27 @@ class PolishedShellTests(DesktopCase):
         self.assertTrue(window.demo_note.isVisible())
         self.assertNotIn(PRIVATE, self.displayed_text(window))
 
-    def test_carrier_is_prominent_and_grouped_above_signal_values(self):
+    def test_diagnostics_move_to_collapsed_settings_and_stay_available(self):
         window = self.window()
         window.render_snapshot(known_snapshot())
         self.application.processEvents()
-        labels = window.home_page.values
+        self.assertFalse(window.settings_page.connection_details_toggle.isChecked())
+        self.assertTrue(window.settings_page.connection_details.isHidden())
+        self.assertEqual(set(window.home_page.values), {"network_status", "network_mode", "sim_state"})
+        self.assertNotIn("Signal", [label.text() for label in window.home_page.findChildren(QLabel)])
+        self.assertNotIn("Router carrier", [label.text() for label in window.home_page.findChildren(QLabel)])
+        calls = list(window.refresh_controller._provider.calls)
+        window.navigation.setCurrentRow(4)
+        window.settings_page.connection_details_toggle.click()
+        self.application.processEvents()
+        self.assertFalse(window.settings_page.connection_details.isHidden())
+        self.assertEqual(window.refresh_controller._provider.calls, calls)
+        labels = window.settings_page.connection_values
         identity = labels["carrier"]
         self.assertEqual(identity.text(), "Unknown")
         self.assertIs(identity.parentWidget(), labels["network_mode"].parentWidget())
         self.assertIs(identity.parentWidget(), labels["sim_state"].parentWidget())
-        self.assertGreater(identity.fontMetrics().height(), labels["rsrp"].fontMetrics().height())
-        self.assertLess(identity.mapTo(window.home_page, QPoint()).y(), labels["rsrp"].mapTo(window.home_page, QPoint()).y())
-        self.assertLess(labels["wan_state"].fontMetrics().height(), labels["rsrp"].fontMetrics().height())
+        self.assertLess(identity.mapTo(window.settings_page, QPoint()).y(), labels["rsrp"].mapTo(window.settings_page, QPoint()).y())
         for label in labels.values():
             self.assertEqual(label.textFormat(), Qt.TextFormat.PlainText)
             self.assertTrue(label.accessibleName())
@@ -471,6 +485,7 @@ class PolishedShellTests(DesktopCase):
         self.assertIn("Router settings are read-only", text)
         self.assertEqual(set(window.settings_page.findChildren(QPushButton)), {
             window.settings_page.forget_login_button,
+            window.settings_page.connection_details_toggle,
         })
 
 

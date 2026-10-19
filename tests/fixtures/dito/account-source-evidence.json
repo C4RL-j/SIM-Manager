@@ -1,0 +1,100 @@
+{
+  "kind": "Sanitized public source evidence for read-only MyDITO account data; no private account capture",
+  "inspected_date": "2026-10-09",
+  "live_account_schema_verified": true,
+  "controlled_validation": {
+    "date": "2026-10-09",
+    "strict_official_sign_in": true,
+    "active_sim_account_binding": true,
+    "automatic_fresh_account_cycle_count": 1,
+    "fields_present": {
+      "load_balance": true,
+      "remaining_data": true,
+      "load_expiry": true,
+      "sms_allowance": false,
+      "call_allowance": false,
+      "commercial_promo_name_count": 0,
+      "reported_balance_bucket_count": 1,
+      "bucket_expiry_count": 1,
+      "last_updated": true
+    },
+    "home_values_match_normalized_data": true,
+    "account_card_before_router": true,
+    "manual_refresh_control_available": true,
+    "data_stale": false,
+    "window_closed": true,
+    "account_data_cleared": true,
+    "application_log_records": 0,
+    "process_exit_code": 0,
+    "private_capture_retained": false,
+    "manual_refresh_and_expiry_paths": "Verified offline; not forced against the live account"
+  },
+  "sources": [
+    {
+      "url": "https://my.dito.ph/umi.bf77fdf1.js",
+      "bytes": 1426667,
+      "sha256": "f4f359351df609d845c2cf09b417001a52c56e5cd151d80c6d3fdf8afec4cdec",
+      "classification": "VERIFIED_PUBLIC_SOURCE",
+      "facts": [
+        {"offset": 30990, "fact": "Module +n12 exports I as its subscriber object getter and K as its user object getter. Account bridge invokes these original getters only inside the isolated page; it never reads browser storage/cookies or exports subscriber/session material."},
+        {"offset": 35064, "fact": "Subscriber getter returns the direct site-owned subsInfo object. Share effects consume this getter's accNbr field; Home consumes its prodInstId field."},
+        {"offset": 313988, "fact": "Login model's original subscriber getter uses GET /ecare/webs/subs/qrySubsDetail?prodInstIds=<userData.subsId>. Its result is a direct subscriber object, not a data envelope, before ordinary site storage installation."},
+        {"offset": 316312, "fact": "Original loginSuccess installs userData, conditionally retrieves subscriber details, then enters /pto/home after consent. The application preserves this existing flow and invokes any missing read only after its existing authenticated proof."},
+        {"offset": 92800, "fact": "Module 0WZ6 declares GET account/<acctId>/balance, POST common/configParam and POST balance/balInfo/glSumInfo. Home uses the latter two; no additional account balance getter is needed for Home's load presentation."},
+        {"offset": 387470, "fact": "Home module G7HE declares POST /ecare/webs/balance/balInfo with its ordinary data object. home/getBalInfo submits {prodInstId}; response is a direct array."},
+        {"offset": 389274, "fact": "home/glSumInfo submits {prodInstId} to the original summary getter and matches glId to the first configured generalData/allNetSMS/offNetSMS/onNetSMS/allNetVoice/offNetVoice/onNetVoice entry. No additive total is constructed."},
+        {"offset": 390808, "fact": "home/getBalInfo treats numeric acctResId=1 as principalBook. Other nonzero numeric resource IDs become othersList, shown by Home as My Promo Details. These are returned balance-resource names, not established commercial offer names."},
+        {"offset": 1193040, "fact": "The official request client's desktop error handler returns to the sign-in route on HTTP401 or a PORTAL-SECURITY code. Its error handler can return false; a false value without route/security evidence is not independently sufficient to declare session expiry."},
+        {"offset": 1194200, "fact": "Original t3Un.a client owns credentials, anti-CSRF and request-signing interceptors. Account bridge reuses that client; it does not reconstruct signing, export tokens or make direct fetch calls."},
+        {"offset": 759062, "fact": "The original request implementation supports timeout and ordinary fetch options. New reads are bounded with timeout and an application-owned AbortSignal."},
+        {"offset": 19988, "fact": "Webpack4 bootstrap exposes window.webpackJsonp; queue entries register modules and execute entry IDs through the existing loader. The bridge adds one private entry to obtain original modules without loading protected Home/BaseLayout chunks."},
+        {"offset": 1252450, "fact": "window.g_umi contains its version only. DVA app uRV1 is closed over and does not export its store/getApp; the bridge does not guess a global store accessor."}
+      ]
+    },
+    {
+      "url": "https://my.dito.ph/layouts__BaseLayout.90e0e6a7.async.js",
+      "bytes": 3884,
+      "sha256": "4390a29349c962f7eb10c21819d8771f1352f14aeba27df3606eabf4deb4a3fd",
+      "classification": "VERIFIED_PUBLIC_SOURCE",
+      "facts": [
+        {"offset": 1317, "fact": "Protected layout bootstrap retrieves common/configParam with configCode webs.ecare.usageGL, summary with subscriber prodInstId and account balance with defaultAcctId. Its mount additionally starts notification and tracking/UCC configuration requests, so the bridge leaves this chunk blocked."}
+      ]
+    },
+    {
+      "url": "https://my.dito.ph/p__Home.d0391f07.async.js",
+      "bytes": 28075,
+      "sha256": "be72b57ecaa4e9632a97218e4fc652ebfbbb4006ece42854b925ba5cff4ebcbb",
+      "classification": "VERIFIED_PUBLIC_SOURCE",
+      "facts": [
+        {"offset": 10985, "fact": "Returned detail row fields rendered by Home are acctResName, expDate, formatRealBalance, formatRealBalanceUnitName, formatGrossBalance and formatGrossBalanceUnitName. unlimitedFlag=Y replaces the balance display with infinity. Raw balances only drive progress, not an invented displayed total."},
+        {"offset": 15300, "fact": "Home consumes generalInfo, smsInfo, voiceInfo, othersList and principalBook. Fresh Home reads request configCode webs.ecare.usageGL then glSumInfo/getBalInfo using the same subscriber prodInstId."},
+        {"offset": 18400, "fact": "Home labels principalBook as Load Balance and displays its currencySymbol (or the separate site currency config), formatRealBalance and expDate."},
+        {"offset": 17150, "fact": "My Promo Details renders othersList resource names and per-row remaining/expiry. This is not proof of a commercial offer/plan name. Current Home never invokes its mapped but unused getOffidConfigParam action."}
+      ]
+    }
+  ],
+  "bridge_reads": [
+    {"method": "GET", "path": "/ecare/webs/subs/qrySubsDetail", "query": "Exact numeric prodInstIds obtained by the original user getter; only needed when subscriber details are missing"},
+    {"method": "POST", "path": "/ecare/webs/common/configParam", "body": "Original configCode webs.ecare.usageGL"},
+    {"method": "POST", "path": "/ecare/webs/balance/balInfo/glSumInfo", "body": "Original subscriber prodInstId, unchanged type"},
+    {"method": "POST", "path": "/ecare/webs/balance/balInfo", "body": "The same original subscriber prodInstId, unchanged type"}
+  ],
+  "field_mappings": {
+    "load_balance": "balInfo row with numeric acctResId=1: formatRealBalance and returned currencySymbol only; never substitute an invented currency",
+    "data_remaining": "Summary row whose glId matches config.generalData[0]: formatRealBalance and returned formatRealBalanceUnitName, or verified unlimitedFlag=Y",
+    "active_promos": "Unverified commercial names remain unavailable. Official Home's returned My Promo Details resource rows are shown separately as reported buckets",
+    "expiry": "PrincipalBook expDate; row expiry stays with each corresponding bucket",
+    "sms_allowance": "Individually reported allNetSMS/offNetSMS/onNetSMS rows; no sum and no zero default",
+    "call_allowance": "Individually reported allNetVoice/offNetVoice/onNetVoice rows; returned units only, no inferred minutes",
+    "data_buckets": "All returned non-load balance-resource rows shown by MyDITO Home, preserving reported name/remaining/unit/expiry without assuming every resource is data",
+    "last_updated": "Application UTC completion time of the successful fresh read; not a fabricated carrier-side timestamp"
+  },
+  "unused_offer_getter_limit": "An unused home/getOffidConfigParam action accepts caller-supplied configParams and hisParams, queries packageHisPageList, then selects offerId matching the config response and orderStatusCode=300000. Current Home supplies no payload or display. Source does not establish the order-status meaning, active-now test, complete paging or current commercial offer-name schema; this getter is not enabled or called.",
+  "unknowns": [
+    "Direct-object/direct-array schema and the recorded field presence passed one controlled live account read. Other accounts/builds may differ; public-source investigation itself made no authenticated requests.",
+    "Calendar timezone of returned text expDate and alternate account/FWA schemas remain unknown.",
+    "Resource bucket overlap/additivity is unverified; only returned values are shown and no detail sum is calculated.",
+    "Commercial active promo names and active-now order semantics are not established by the actual current Home source.",
+    "Actual session lifetime and remote server revocation remain unverified; existing official sign-in/session behavior is preserved."
+  ]
+}
